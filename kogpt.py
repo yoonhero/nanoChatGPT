@@ -4,38 +4,40 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import transformers 
+import tiktoken
 
 # Hyper Parameters
 batch_size = 64 # how many independent sequences will we process in parallel?
-block_size = 128 # what is the maximum context length for predictions?
-max_iters = 5000
+block_size = 64 # what is the maximum context length for predictions?
+max_iters = 10000
+start_epoch = 0
 eval_interval = 500
+save_interval = 100
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
-n_embd = 256
+n_embd = 128
 n_heads = 16
-n_layer = 6
+n_layer = 2
 dropout = 0.2
+PATH="./tmp/checkpoints/"
+load = False
 # --------------------
 
-with open("input.txt", "r", encoding="utf-8") as f:
+with open("./dataset/korean_murim_book.txt", "r", encoding="cp949") as f:
     text = f.read()
 
+enc = tiktoken.get_encoding("gpt2")
+encode = lambda s: enc.encode(s)
+decode = lambda l: enc.decode(l)
+vocab_size = enc.n_vocab
 
-chars = sorted(list(set(text)))
-vocab_size = len(chars)
-stoi = { ch:i for i,ch in enumerate(chars) }
-itos = { i:ch for i,ch in enumerate(chars) }
-encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
-decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
-
+text = text[:100000]
 # Train and test splits
 data = torch.tensor(encode(text), dtype=torch.long)
 n = int(0.9*len(data)) # first 90% will be train, rest val
 train_data = data[:n]
 val_data = data[n:]
-
 
 # data loading
 def get_batch(split):
@@ -190,8 +192,7 @@ class GPTLanguageModel(nn.Module):
         return idx
 
 
-model = GPTLanguageModel()
-m = model.to(device)
+model = GPTLanguageModel().to(device)
 
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, warmup, max_iters):
@@ -218,8 +219,29 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay
                                                         #  num_warmup_steps=num_warmup_steps, 
                                                         #  num_training_steps=num_total_steps)
 
-for iter in range(max_iters):
 
+def save_model(epoch, model, optimizer):
+    model_state_dict = {
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "epoch": epoch
+    }   
+    torch.save(model_state_dict, PATH+f"{epoch}-.tar")
+
+
+def load_model(model, optimizer):
+    model_state_dict = torch.load(PATH + "{}.tar")
+
+    model.load_state_dict(model_state_dict["model"])
+    optimizer.load_state_dict(model_state_dict["optimizer"])
+
+    return model_state_dict["epoch"]
+
+if load: 
+    start_epoch = load_model(model, optimizer)
+
+
+for iter in range(start_epoch, max_iters):
     # every once in a while evaluate the loss on train and val sets
     if iter % eval_interval == 0:
         losses = estimate_loss(model=model)
@@ -234,9 +256,17 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
     # scheduler.step()
-    print(f"iter: {iter} | {loss.item()}")
+
+    if iter % save_interval == 0:
+        save_model(iter, model, optimizer)
+        print(f"iter: {iter} | {loss.item()}")
+
 
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+# print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
+with open('result.txt', "w", encoding="cp949") as f:
+    f.writelines(result)
+    f.close()
