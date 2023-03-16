@@ -14,7 +14,7 @@ def main(args):
     model_path = args.path
     max_tokens = args.max_tokens
     start_tokens = args.start
-
+    start_tokens = encode(start_tokens)
     model, _, _ = utils.load_model(model_path)
     model.eval()
 
