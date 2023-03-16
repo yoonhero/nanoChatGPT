@@ -24,8 +24,9 @@ def load_model(PATH):
     model = GPTLanguageModel(S_GPT_CONFIG).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.9)
 
-    last_epoch = get_last_epoch(PATH)
-    model_state_dict = torch.load(PATH + f"{last_epoch}.tar")
+    # last_epoch = get_last_epoch(PATH)
+    # model_state_dict = torch.load(PATH + f"{last_epoch}.tar")
+    model_state_dict = torch.laod(PATH)
 
     model.load_state_dict(model_state_dict["model"])
     optimizer.load_state_dict(model_state_dict["optimizer"])
