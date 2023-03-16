@@ -1,7 +1,7 @@
 import glob 
 import torch
 from model import GPTLanguageModel
-from config import learning_rate, device, S_GPT_CONFIG
+from config import learning_rate, device, S_GPT_CONFIG, LARGE_GPT_CONFIG
 
 def save_model(epoch, model, optimizer, PATH):
     model_state_dict = {
@@ -21,7 +21,7 @@ def get_last_epoch(PATH: str) -> int:
     return max(epochs)
 
 def load_model(PATH):
-    model = GPTLanguageModel(S_GPT_CONFIG).to(device)
+    model = GPTLanguageModel(LARGE_GPT_CONFIG).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.9)
 
     # last_epoch = get_last_epoch(PATH)

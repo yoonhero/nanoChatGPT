@@ -7,7 +7,7 @@ import os
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, load, GPTConfig, S_GPT_CONFIG
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, load, GPTConfig, S_GPT_CONFIG, LARGE_GPT_CONFIG
 
 enc = tiktoken.get_encoding("gpt2")
 encode = lambda s: enc.encode(s)
@@ -75,7 +75,7 @@ def main(args):
     if load:
         model, optimizer, start_epoch = load_model(PATH)
     else: 
-        model = GPTLanguageModel(S_GPT_CONFIG).to(device)
+        model = GPTLanguageModel(LARGE_GPT_CONFIG).to(device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.9)
         start_epoch = 0
 
