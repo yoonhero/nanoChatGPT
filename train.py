@@ -1,36 +1,52 @@
 import torch
 import torch.optim as optim
-import tiktoken
+# import tiktoken
 import argparse
 from torch.utils.data import Dataset, random_split, DataLoader
 import os
+import pandas as pd
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
 from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, load, GPTConfig, S_GPT_CONFIG, LARGE_GPT_CONFIG
+from tokenizer import CustomTokenizer as Tokenizer
 
-enc = tiktoken.get_encoding("gpt2")
+# enc = tiktoken.get_encoding("gpt2")
+# enc.special_tokens_set
+# encode = lambda s: enc.encode(s)
+# decode = lambda l: enc.decode(l)
+enc = Tokenizer()
 encode = lambda s: enc.encode(s)
-decode = lambda l: enc.decode(l)
+decode = lambda s: enc.decode(s)
 
+# Data Loading Optimization
 class GPTDataset(Dataset):
     def __init__(self, txt_file, block_size):
         self.block_size = block_size
         
         # with open(txt_file, "r", encoding="cp949") as f:
         with open(txt_file, "r") as f:
+            # text = f.read().replace("\n", "\t")
             text = f.read()
         # text = text[:1000000]
-        self.encoded_texts = encode(text)
+        # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
+        splited_text = text.split("\n")[:100000]
+        self.data = pd.DataFrame(splited_text)
+        del text
+        del splited_text
+        self.data.apply(encode)
+        # self.encoded_texts = encode(text)
         self.length = (len(self.encoded_texts)-block_size) // block_size
         # print(self.length)
+
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        x = self.encoded_texts[index*self.block_size:(index+1)*self.block_size]
-        y = self.encoded_texts[index*self.block_size+1:(index+1)*self.block_size+1]
+        # x = self.encoded_texts[index*self.block_size:(index+1)*self.block_size]
+        # y = self.encoded_texts[index*self.block_size+1:(index+1)*self.block_size+1]
         # print(len(x), len(y))
+
         x = torch.tensor(x, dtype=torch.long)
         y = torch.tensor(y, dtype=torch.long)
         x, y = x.to(device), y.to(device)
@@ -81,8 +97,7 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.9)
         start_epoch = 0
 
-    print(model)
-
+    # print(model)
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
         if iter % eval_interval == 0:
@@ -99,7 +114,7 @@ def main(args):
             optimizer.step()
             # scheduler.step()
 
-    # generate from the model``
+    # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
     # print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())

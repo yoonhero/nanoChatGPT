@@ -23,6 +23,11 @@ class GPTConfig:
     n_layer: int
     vocab_size: int
     dropout: int = 0.2
+    
 
+# GPT-3.5 Tokenizer
+#100277
+SUPER_SMALL_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=2, dropout=0.2, vocab_size=10000)
 S_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=1, dropout=0.2, vocab_size=50257)
 LARGE_GPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=50257)
+LARGE_CHATGPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=100277)
