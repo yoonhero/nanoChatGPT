@@ -17,7 +17,8 @@ class GPTDataset(Dataset):
     def __init__(self, txt_file, block_size):
         self.block_size = block_size
         
-        with open(txt_file, "r", encoding="cp949") as f:
+        # with open(txt_file, "r", encoding="cp949") as f:
+        with open(txt_file, "r") as f:
             text = f.read()
         self.encoded_texts = encode(text)
         self.length = (len(self.encoded_texts)-block_size) // block_size
