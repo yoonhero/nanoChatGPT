@@ -62,7 +62,9 @@ class FeedForward(nn.Module):
         self.dropout = config.dropout
         self.net = nn.Sequential(
             nn.Linear(self.n_embd, 4*self.n_embd),
-            nn.ReLU(),
+            # nn.ReLU(),
+            # SwiGLU for better result => LLAMA
+            nn.SiLU(),
             nn.Linear(4*self.n_embd, self.n_embd),
             nn.Dropout(self.dropout)
         )
@@ -81,13 +83,17 @@ class Block(nn.Module):
         self.n_heads = config.n_heads
         self.head_size = self.n_embd // self.n_heads
 
+        self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
         self.sa = MultiHeadAttention(config)
         self.ffwd = FeedForward(config)
         self.ln1 = nn.LayerNorm(self.n_embd)
         self.ln2 = nn.LayerNorm(self.n_embd)
     
     def forward(self, x):
+        B, T, C = x.shape
+        pos_emb = self.positional_embedding_table(torch.arange(T, device=device))
         x = x+self.sa(self.ln1(x))
+        x = x+pos_emb
         x = x+self.ffwd(self.ln2(x))
         return x
 

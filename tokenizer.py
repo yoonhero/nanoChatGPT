@@ -8,7 +8,7 @@ from tokenizers.trainers import BpeTrainer
 class CustomTokenizer():
     def __init__(self, tokenizer_path="./vocab/tokenizer"):        
         self.tokenizer = Tokenizer.from_file(tokenizer_path)
-        print(self.tokenizer.encode("안녕").ids)
+        # print(self.tokenizer.encode("안녕").ids)
     
     def encode(self, sentence:str) -> list[int]:
         encoded_str = self.tokenizer.encode(sentence)

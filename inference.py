@@ -4,11 +4,14 @@ import argparse
 
 import utils
 from config import MODEL_PATH, device
+from tokenizer import CustomTokenizer as Tokenizer
 
-enc = tiktoken.get_encoding("gpt2")
+# enc = tiktoken.get_encoding("gpt2")
+# encode = lambda s: enc.encode(s)
+# decode = lambda l: enc.decode(l)
+enc = Tokenizer()
 encode = lambda s: enc.encode(s)
-decode = lambda l: enc.decode(l)
-
+decode = lambda s: enc.decode(s)
 
 def main(args):
     model_path = args.path
