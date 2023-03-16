@@ -26,7 +26,7 @@ def load_model(PATH):
 
     # last_epoch = get_last_epoch(PATH)
     # model_state_dict = torch.load(PATH + f"{last_epoch}.tar")
-    model_state_dict = torch.laod(PATH)
+    model_state_dict = torch.load(PATH)
 
     model.load_state_dict(model_state_dict["model"])
     optimizer.load_state_dict(model_state_dict["optimizer"])
