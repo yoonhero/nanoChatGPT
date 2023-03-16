@@ -20,7 +20,7 @@ class GPTDataset(Dataset):
         # with open(txt_file, "r", encoding="cp949") as f:
         with open(txt_file, "r") as f:
             text = f.read()
-        text = text[:1000000]
+        # text = text[:1000000]
         self.encoded_texts = encode(text)
         self.length = (len(self.encoded_texts)-block_size) // block_size
         # print(self.length)
@@ -104,7 +104,7 @@ def main(args):
     # print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
-    with open('result.txt', "w", encoding="cp949") as f:
+    with open('result.txt', "w") as f:
         f.writelines(result)
         f.close()
 

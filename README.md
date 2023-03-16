@@ -1,4 +1,20 @@
-# GPT from scratch
+# R&E #2 2023 - Make ChatGPT
+
+## TODOS
+
+- [ ] Pretrain GPT with Korean Dataset (NAVER, NAMU, WIKIPEDIA...)
+- [ ] Prepare Prompt for prompt engineering
+- [ ] Prompt Translation for Korean Data.
+- [ ] Fine-tuning GPT with custom prompt.
+- [ ] Evaluation with Various Performance Dataset
+- [ ] Simple RLHF.
+- [ ] Custom RLHF website.
+- [ ] Customize GPT for adversarial training.
+- [ ] Evaluation.
+- [ ] Make things work!
+- [ ] Deploy Custom ChatGPT.
+
+--- 
 
 GPT-3의 성과는 바로 거대한 언어 말뭉치를 신경망이 학습하면 인간이 생성하는 것처럼 그럴듯한 말을 생성할 수 있다는 것이다. 언어란 어떤 개념을 설명하고 인간의 생각과 아이디어를 표현하는 매우 중요한 수단이기 때문에 인공지능이 이러한 언어를 완벽하게 습득하게 된다면 인간과 인공지능의 매끄러운 의사소통이 가능해질 것이다. 
 
