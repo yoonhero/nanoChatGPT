@@ -20,6 +20,7 @@ class GPTDataset(Dataset):
         # with open(txt_file, "r", encoding="cp949") as f:
         with open(txt_file, "r") as f:
             text = f.read()
+        text = text[:1000000]
         self.encoded_texts = encode(text)
         self.length = (len(self.encoded_texts)-block_size) // block_size
         # print(self.length)
