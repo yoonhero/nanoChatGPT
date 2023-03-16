@@ -25,4 +25,4 @@ class GPTConfig:
     dropout: int = 0.2
 
 S_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=1, dropout=0.2, vocab_size=50257)
-LARGE_GPT_CONFIG = GPTConfig(block_size=128, n_embd=512, n_heads=16, n_layer=6, dropout=0.2, vocab_size=50257)
+LARGE_GPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=50257)
