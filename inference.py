@@ -14,13 +14,16 @@ def main(args):
     model_path = args.path
     max_tokens = args.max_tokens
     start_tokens = args.start
-    start_tokens = encode(start_tokens)
+    result = encode(start_tokens)
     model, _, _ = utils.load_model(model_path)
     model.eval()
 
-    context = torch.tensor(start_tokens, dtype=torch.long, device=device)
-    with torch.no_grad():
+    if start_tokens == "":
         result = input("")
+        result = encode(result)
+
+    # context = torch.tensor(start_tokens, dtype=torch.long, device=device)
+    with torch.no_grad():
         # for i in range(max_tokens):
         # generate from the model
         context = torch.tensor(result, dtype=torch.long, device=device)
