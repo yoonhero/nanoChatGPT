@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import device
+import math
+from config import device, SUPER_SMALL_GPT_CONFIG, LARGE_GPT_CONFIG, SUPER_LARGE_CHATGPT_CONFIG, SUPER_SUPER_LARGE_CHATGPT_CONFIG
 
 class Head(nn.Module):
     def __init__(self, config):
@@ -54,6 +55,36 @@ class MultiHeadAttention(nn.Module):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
         return out
+    
+class CasualAttention(nn.Module):
+    # Multiple heads of self-attention in parallel
+    # for efficiency
+    def __init__(self, config) -> None:
+        super().__init__()
+        self.n_embd = config.n_embd
+        self.n_heads = config.n_heads
+        assert self.n_embd % self.n_heads == 0, "Please Check Embedding and Heads Number Config."
+        self.head_size = self.n_embd//self.n_heads
+        self.dropout = config.dropout
+        self.block_size = config.block_size
+
+        self.c_attn = nn.Linear(self.n_embd, self.n_embd*3, bias=False)
+        self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
+
+        self.attn_drop = nn.Dropout(self.dropout)
+        self.resid_drop = nn.Dropout(self.dropout)
+    
+    def forward(self, x):
+        B, T, C = x.size()
+
+        q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+
+        y = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout, is_causal=True)        
+        y = y.transpose(1, 2).contagious().view(B, T, C)
+
+        y = self.resid_drop(self.c_proj(y))
+
+        return y
 
 class FeedForward(nn.Module):
     def __init__(self, config):
@@ -61,11 +92,11 @@ class FeedForward(nn.Module):
         self.n_embd = config.n_embd
         self.dropout = config.dropout
         self.net = nn.Sequential(
-            nn.Linear(self.n_embd, 4*self.n_embd),
+            nn.Linear(self.n_embd, 4*self.n_embd, bias=False),
             # nn.ReLU(),
             # SwiGLU for better result => LLAMA
             nn.SiLU(),
-            nn.Linear(4*self.n_embd, self.n_embd),
+            nn.Linear(4*self.n_embd, self.n_embd, bias=False),
             nn.Dropout(self.dropout)
         )
         
@@ -81,10 +112,12 @@ class Block(nn.Module):
         super().__init__()
         self.n_embd = config.n_embd
         self.n_heads = config.n_heads
+        self.block_size = config.block_size
         self.head_size = self.n_embd // self.n_heads
 
         self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
-        self.sa = MultiHeadAttention(config)
+        # self.sa = MultiHeadAttention(config)
+        self.sa = CasualAttention(config)
         self.ffwd = FeedForward(config)
         self.ln1 = nn.LayerNorm(self.n_embd)
         self.ln2 = nn.LayerNorm(self.n_embd)
@@ -117,7 +150,27 @@ class GPTLanguageModel(nn.Module):
         self.blocks = nn.Sequential(*[Block(config) for _ in range(self.n_layer)])
         self.ln_f = nn.LayerNorm(self.n_embd)
         self.lm_head = nn.Linear(self.n_embd, self.vocab_size)
+
+        self.apply(self._init_weights)
+        # apply special scaled init to the residual projections, per GPT-2 paper
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+
+        print(f"Number of parameters: {self.get_num_params()}")
+
+    def get_num_params(self):
+        n_params = [p.nelement() for p in self.parameters()]
+        return sum(n_params)
     
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
     def forward(self, idx, targets=None):
         B, T = idx.shape
         # idx and targets are both (B, T) tensor of integes
@@ -142,7 +195,8 @@ class GPTLanguageModel(nn.Module):
 
         return logits, loss
 
-    def generate(self, idx, max_new_tokens):
+    @torch.no_grad()
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         for _ in range(max_new_tokens):
             # get the prediction
             # print(idx.shape, max_new_tokens)
@@ -153,7 +207,11 @@ class GPTLanguageModel(nn.Module):
 
             logits, _ = self(idx_cond)
             # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
+            logits = logits[:, -1, :] / temperature # becomes (B, C)
+
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = -float('Inf')
             # apply softmax to get probabilities
             probs = F.softmax(logits, dim=-1)
             # sample from the distribution
@@ -161,3 +219,7 @@ class GPTLanguageModel(nn.Module):
             # append sample index to the running sequnce
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
+
+
+if __name__ == "__main__":
+    model = GPTLanguageModel(SUPER_SUPER_LARGE_CHATGPT_CONFIG)
