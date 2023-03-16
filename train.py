@@ -133,7 +133,7 @@ def main(args):
     if load:
         model, optimizer, start_epoch = load_model(PATH)
     else: 
-        model = GPTLanguageModel(SUPER_SMALL_GPT_CONFIG).to(device)
+        model = GPTLanguageModel(LARGE_GPT_CONFIG).to(device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
