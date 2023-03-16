@@ -139,7 +139,7 @@ class GPTLanguageModel(nn.Module):
     def generate(self, idx, max_new_tokens):
         for _ in range(max_new_tokens):
             # get the prediction
-            print(idx.shape, max_new_tokens)
+            # print(idx.shape, max_new_tokens)
             if idx.shape[1] > self.block_size:
                 idx_cond = idx[:, -self.block_size:]
             else: 
