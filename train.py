@@ -190,6 +190,6 @@ if __name__ == "__main__":
 
     # main(args)
 
-    d = GPTDataset("./dataset/data.txt", 1000)
+    # d = GPTDataset("./dataset/data.txt", 1000)
 
-    print(d[0])
+    # print(d[0])
