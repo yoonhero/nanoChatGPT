@@ -7,7 +7,6 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 import pandas as pd
-from datasets import load_dataset
 # import wandb
 
 from model import GPTLanguageModel
@@ -33,11 +32,8 @@ class GPTDataset(Dataset):
         with open(txt_file, "r") as f:
             # text = f.read().replace("\n", "\t")
             # self.tokens = f.read()[:1000000].split()
-            self.tokens = f.read()
+            self.tokens = f.read()[:100000]
         print(f"Loading Corpus File Done!")
-
-        print("Tokenizing...")
-        text = text[:1000000]
         # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
         # splited_text = text.split("\n")[:100000]
         # self.data = pd.DataFrame(splited_text)
@@ -48,6 +44,7 @@ class GPTDataset(Dataset):
         # pubmed_dataset = load_dataset("txt", data_files=txt_file, split="train")
         # dataset = dataset.map(encode, batched=True)
 
+        print("Tokenizing...")
         self.encoded_token = encode(self.tokens)
         self.length = len(self.encoded_token) // self.block_size
         print(f"Dataset Size: {len(self.encoded_token)}")
