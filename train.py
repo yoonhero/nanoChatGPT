@@ -31,7 +31,7 @@ class GPTDataset(Dataset):
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
             # text = f.read().replace("\n", "\t")
-            self.tokens = f.read().split()
+            self.tokens = f.read()[:1000000].split()
         print(f"Loading Corpus File Done!")
         # text = text[:1000000]
         # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
