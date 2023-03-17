@@ -54,7 +54,7 @@ class GPTDataset(Dataset):
         x = torch.tensor([encode(token) for token in tokens[:-1]]).long()
         y = torch.tensor([encode(token) for token in tokens[1:]]).long()
         
-        print(len(x), len(y))
+        # print(len(x), len(y))
 
         # x = torch.tensor(input_ids, dtype=torch.long)
         # y = torch.tensor(target_ids, dtype=torch.long)
@@ -89,18 +89,18 @@ def main(args):
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
 
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="small-chatgpt",
+    # wandb.init(
+    #     # set the wandb project where this run will be logged
+    #     project="small-chatgpt",
         
-        # track hyperparameters and run metadata
-        config={
-        "learning_rate": learning_rate,
-        "architecture": "GPT",
-        "dataset": "Custom Corpus Dataset",
-        "epochs": max_iters,
-        }
-    )
+    #     # track hyperparameters and run metadata
+    #     config={
+    #     "learning_rate": learning_rate,
+    #     "architecture": "GPT",
+    #     "dataset": "Custom Corpus Dataset",
+    #     "epochs": max_iters,
+    #     }
+    # )
 
     os.makedirs(PATH, exist_ok=True)
 
@@ -159,10 +159,10 @@ def main(args):
             # optimizer.step()
             scheduler.step()
 
-        wandb.log({"loss": sum(losses)/len(losses)})
+        # wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb
-    wandb.finish()
+    # wandb.finish()
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
