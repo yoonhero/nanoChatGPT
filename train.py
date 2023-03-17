@@ -51,6 +51,7 @@ class GPTDataset(Dataset):
         start_idx = idx * self.block_size
         end_idx = (idx + 1) * self.block_size
         tokens = self.tokens[start_idx:end_idx]
+        print(tokens, len(tokens))
         # x = self.encoded_texts[index*self.block_size:(index+1)*self.block_size]
         # y = self.encoded_texts[index*self.block_size+1:(index+1)*self.block_size+1]
         x = torch.tensor([encode(token) for token in tokens[:-1]]).long()
