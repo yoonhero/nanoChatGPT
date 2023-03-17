@@ -87,7 +87,7 @@ class CasualAttention(nn.Module):
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
         y = att @ v     
-        y = y.transpose(1, 2).contagious().view(B, T, C)
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
 
         y = self.resid_drop(self.c_proj(y))
         return y
