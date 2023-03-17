@@ -71,7 +71,7 @@ class CasualAttention(nn.Module):
         self.c_attn = nn.Linear(self.n_embd, self.n_embd*3, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
 
-        self.attn_drop = nn.Dropout(self.dropout)
+        self.attn_dropout = nn.Dropout(self.dropout)
         self.resid_drop = nn.Dropout(self.dropout)
 
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
