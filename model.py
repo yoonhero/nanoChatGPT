@@ -73,17 +73,23 @@ class CasualAttention(nn.Module):
 
         self.attn_drop = nn.Dropout(self.dropout)
         self.resid_drop = nn.Dropout(self.dropout)
-    
+
+        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
+                                        .view(1, 1, config.block_size, config.block_size))
+
     def forward(self, x):
         B, T, C = x.size()
 
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
 
-        y = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout, is_causal=True)        
+        att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1)))
+        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+        att = F.softmax(att, dim=-1)
+        att = self.attn_dropout(att)
+        y = att @ v     
         y = y.transpose(1, 2).contagious().view(B, T, C)
 
         y = self.resid_drop(self.c_proj(y))
-
         return y
 
 class FeedForward(nn.Module):
