@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # main(args)
+    main(args)
 
     # d = GPTDataset("./dataset/data.txt", 1000)
 
