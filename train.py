@@ -7,7 +7,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 import pandas as pd
-# import wandb
+import wandb
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
@@ -27,22 +27,11 @@ class GPTDataset(Dataset):
     def __init__(self, txt_file, block_size):
         self.block_size = block_size
         
-        # with open(txt_file, "r", encoding="cp949") as f:
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
-            # text = f.read().replace("\n", "\t")
             # self.tokens = f.read()[:1000000].split()
             self.tokens = f.read()[:100000]
         print(f"Loading Corpus File Done!")
-        # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
-        # splited_text = text.split("\n")[:100000]
-        # self.data = pd.DataFrame(splited_text)
-        # del text
-        # del splited_text
-        # self.data.apply(encode)
-        # This takes a few minutes to run, so go grab a tea or coffee while you wait :)
-        # pubmed_dataset = load_dataset("txt", data_files=txt_file, split="train")
-        # dataset = dataset.map(encode, batched=True)
 
         print("Tokenizing...")
         self.encoded_token = encode(self.tokens)
@@ -56,16 +45,9 @@ class GPTDataset(Dataset):
         start_idx = idx * self.block_size
         end_idx = (idx + 1) * self.block_size
         tokens = self.encoded_token[start_idx:end_idx]
-        # print(tokens, len(tokens))
         x = torch.tensor(tokens[:-1]).long()
         y = torch.tensor(tokens[1:]).long()
-        # x = torch.tensor([encode(token) for token in tokens[:-1]]).long()
-        # y = torch.tensor([encode(token) for token in tokens[1:]]).long()
         
-        # print(len(x), len(y))
-
-        # x = torch.tensor(input_ids, dtype=torch.long)
-        # y = torch.tensor(target_ids, dtype=torch.long)
         x, y = x.to(device), y.to(device)
         return x, y
 
@@ -97,22 +79,22 @@ def main(args):
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
 
-    # wandb.init(
-    #     # set the wandb project where this run will be logged
-    #     project="small-chatgpt",
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="small-chatgpt",
         
-    #     # track hyperparameters and run metadata
-    #     config={
-    #     "learning_rate": learning_rate,
-    #     "architecture": "GPT",
-    #     "dataset": "Custom Corpus Dataset",
-    #     "epochs": max_iters,
-    #     }
-    # )
+        # track hyperparameters and run metadata
+        config={
+        "learning_rate": learning_rate,
+        "architecture": "GPT",
+        "dataset": "Custom Corpus Dataset",
+        "epochs": max_iters,
+        }
+    )
 
     os.makedirs(PATH, exist_ok=True)
 
-    dataset = GPTDataset(TXT_FILE_PATH, block_size=S_GPT_CONFIG.block_size)
+    dataset = GPTDataset(TXT_FILE_PATH, block_size=LARGE_GPT_CONFIG.block_size)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -148,7 +130,6 @@ def main(args):
     # lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=15, max_iters=max_iters)
     scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
-    # print(model)
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
         if iter % eval_interval == 0:
@@ -168,10 +149,10 @@ def main(args):
             scheduler.step()
 
         print(f"Loss: {sum(losses)/len(losses)}")
-        # wandb.log({"loss": sum(losses)/len(losses)})
+        wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb
-    # wandb.finish()
+    wandb.finish()
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
