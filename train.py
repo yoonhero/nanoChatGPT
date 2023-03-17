@@ -1,26 +1,27 @@
 import torch
 import torch.optim as optim
-# import tiktoken
+import tiktoken
 import argparse
 from torch.utils.data import Dataset, random_split, DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 import pandas as pd
-import wandb
+from datasets import load_dataset
+# import wandb
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
 from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, load, GPTConfig, S_GPT_CONFIG, LARGE_GPT_CONFIG, SUPER_SMALL_GPT_CONFIG
 from tokenizer import CustomTokenizer as Tokenizer
 
-# enc = tiktoken.get_encoding("gpt2")
+enc = tiktoken.get_encoding("gpt2")
 # enc.special_tokens_set
-# encode = lambda s: enc.encode(s)
-# decode = lambda l: enc.decode(l)
-enc = Tokenizer()
 encode = lambda s: enc.encode(s)
-decode = lambda s: enc.decode(s)
+decode = lambda l: enc.decode(l)
+# enc = Tokenizer()
+# encode = lambda s: enc.encode(s)
+# decode = lambda s: enc.decode(s)
 
 # Data Loading Optimization
 class GPTDataset(Dataset):
@@ -31,18 +32,25 @@ class GPTDataset(Dataset):
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
             # text = f.read().replace("\n", "\t")
-            self.tokens = f.read()[:1000000].split()
+            # self.tokens = f.read()[:1000000].split()
+            self.tokens = f.read()
         print(f"Loading Corpus File Done!")
-        # text = text[:1000000]
+
+        print("Tokenizing...")
+        text = text[:1000000]
         # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
         # splited_text = text.split("\n")[:100000]
         # self.data = pd.DataFrame(splited_text)
         # del text
         # del splited_text
         # self.data.apply(encode)
-        # self.encoded_texts = encode(text)
-        self.length = len(self.tokens) // self.block_size
-        print(f"Dataset Size: {len(self.tokens)}")
+        # This takes a few minutes to run, so go grab a tea or coffee while you wait :)
+        # pubmed_dataset = load_dataset("txt", data_files=txt_file, split="train")
+        # dataset = dataset.map(encode, batched=True)
+
+        self.encoded_token = encode(self.tokens)
+        self.length = len(self.encoded_token) // self.block_size
+        print(f"Dataset Size: {len(self.encoded_token)}")
 
     def __len__(self):
         return self.length
@@ -50,12 +58,12 @@ class GPTDataset(Dataset):
     def __getitem__(self, idx):
         start_idx = idx * self.block_size
         end_idx = (idx + 1) * self.block_size
-        tokens = self.tokens[start_idx:end_idx]
+        tokens = self.encoded_token[start_idx:end_idx]
         print(tokens, len(tokens))
-        # x = self.encoded_texts[index*self.block_size:(index+1)*self.block_size]
-        # y = self.encoded_texts[index*self.block_size+1:(index+1)*self.block_size+1]
-        x = torch.tensor([encode(token) for token in tokens[:-1]]).long()
-        y = torch.tensor([encode(token) for token in tokens[1:]]).long()
+        x = torch.tensor(tokens[:-1]).long()
+        y = torch.tensor(tokens[1:]).long()
+        # x = torch.tensor([encode(token) for token in tokens[:-1]]).long()
+        # y = torch.tensor([encode(token) for token in tokens[1:]]).long()
         
         # print(len(x), len(y))
 
