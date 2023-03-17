@@ -12,6 +12,7 @@ class CustomTokenizer():
     
     def encode(self, sentence:str) -> list[int]:
         encoded_str = self.tokenizer.encode(sentence)
+        print(encoded_str.ids)
         return encoded_str.ids
     
     def decode(self, sentence:str) -> list[int]:
