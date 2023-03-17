@@ -28,9 +28,11 @@ class GPTDataset(Dataset):
         self.block_size = block_size
         
         # with open(txt_file, "r", encoding="cp949") as f:
+        print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
             # text = f.read().replace("\n", "\t")
-            self.tokens = f.read().split()[:10000]
+            self.tokens = f.read().split()
+        print(f"Loading Corpus File Done!")
         # text = text[:1000000]
         # pd.DataFrame({"text":text[:1000].split("\n")}).apply(lambda x: x+"!")
         # splited_text = text.split("\n")[:100000]
