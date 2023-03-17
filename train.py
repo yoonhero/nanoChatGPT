@@ -164,9 +164,10 @@ def main(args):
             optimizer.zero_grad(set_to_none=True)
             losses.append(loss.item())
             loss.backward()
-            # optimizer.step()
+            optimizer.step()
             scheduler.step()
 
+        print(f"Loss: {sum(losses)/len(losses)}")
         # wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb
