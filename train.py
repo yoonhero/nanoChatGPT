@@ -10,9 +10,9 @@ import pandas as pd
 import wandb
 
 from model import GPTLanguageModel
-from utils import load_model, save_model
+from utils import load_model, save_model,getConfig
 from dataset import GPTDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, getConfig
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH
 from tokenizer import tokenizer
 
 # enc = tiktoken.get_encoding("gpt2")
