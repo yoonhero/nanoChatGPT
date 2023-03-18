@@ -49,7 +49,7 @@ def main(args):
     PATH = args.path
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
-    wandb = args.wandb
+    is_wandb = args.wandb
     # max_dataset_size = args.max_dataset_size
     with_lr_scheduler = args.with_lr_scheduler
 
@@ -61,7 +61,7 @@ def main(args):
 
     config = getConfig(args.model_size)
 
-    if wandb:
+    if is_wandb:
         wandb.init(
             # set the wandb project where this run will be logged
             project="small-chatgpt",
@@ -126,7 +126,7 @@ def main(args):
             losses = estimate_loss(model=model)
             print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
-            if wandb:
+            if is_wandb:
                 wandb.log({
                     "iter": iter,
                     "train/loss": losses['train'],
