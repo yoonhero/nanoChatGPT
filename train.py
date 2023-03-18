@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import wandb
 from transformers import AutoTokenizer
-import tqdm
+from tqdm import tqdm
 
 from model import GPTLanguageModel
 from utils import load_model, save_model,getConfig
@@ -122,20 +122,6 @@ def main(args):
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
-        if (iter-start_epoch) % eval_interval == 0:
-            losses = estimate_loss(model=model)
-            print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-
-            if is_wandb:
-                wandb.log({
-                    "iter": iter,
-                    "train/loss": losses['train'],
-                    "val/loss": losses['val'],
-                    "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
-                })
-        if (iter-start_epoch+1) % save_interval == 0:
-            save_model(iter+1, model, optimizer, PATH)
-
         losses = []
         for idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")):
             # evaluate the loss
@@ -149,6 +135,29 @@ def main(args):
                 lr_scheduler.step()
 
         print(f"Epoch: {iter} | Loss: {mean(losses)}")
+
+        if (iter-start_epoch) % eval_interval == 0:
+            losses = estimate_loss(model=model)
+            print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+
+            if is_wandb:
+                wandb.log({
+                    "iter": iter,
+                    "train/loss": losses['train'],
+                    "val/loss": losses['val'],
+                    "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
+                })
+        elif is_wandb:
+            wandb.log({
+                "iter": iter,
+                "train/loss": mean(losses),
+                "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
+            })
+
+        # Save the every save interval
+        if (iter-start_epoch+1) % save_interval == 0:
+            save_model(iter+1, model, optimizer, PATH)
+
 
     # finish wandb
     if wandb:
