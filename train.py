@@ -127,8 +127,8 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
-    # lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=15, max_iters=max_iters)
-    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=40, max_iters=max_iters)
+    # scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
@@ -146,7 +146,7 @@ def main(args):
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            lr_scheduler.step()
 
         print(f"Loss: {sum(losses)/len(losses)}")
         # wandb.log({"loss": sum(losses)/len(losses)})

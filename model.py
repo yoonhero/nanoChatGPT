@@ -121,7 +121,7 @@ class Block(nn.Module):
         self.block_size = config.block_size
         self.head_size = self.n_embd // self.n_heads
 
-        self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
+        # self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
         # self.sa = MultiHeadAttention(config)
         self.sa = CasualAttention(config)
         self.ffwd = FeedForward(config)
@@ -130,9 +130,9 @@ class Block(nn.Module):
     
     def forward(self, x):
         B, T, C = x.shape
-        pos_emb = self.positional_embedding_table(torch.arange(T, device=device))
+        # pos_emb = self.positional_embedding_table(torch.arange(T, device=device))
         x = x+self.sa(self.ln1(x))
-        x = x+pos_emb
+        # x = x+pos_emb
         x = x+self.ffwd(self.ln2(x))
         return x
 
