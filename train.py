@@ -114,17 +114,17 @@ def main(args):
         if (iter-start_epoch+1) % save_interval == 0:
             save_model(iter+1, model, optimizer, PATH)
 
-        # losses = []
+        losses = []
         for idx, (x, y) in enumerate(train_loader):
             # evaluate the loss
             _, loss = model(x, y)
             optimizer.zero_grad(set_to_none=True)
-            # losses.append(loss.item())
+            losses.append(loss.item())
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
 
-        # print(f"Loss: {sum(losses)/len(losses)}")
+        print(f"Epoch: {iter} | Loss: {sum(losses)/len(losses)}")
         # wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb

@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from config import device, SUPER_SMALL_GPT_CONFIG, LARGE_GPT_CONFIG, SUPER_LARGE_CHATGPT_CONFIG, SUPER_SUPER_LARGE_CHATGPT_CONFIG
-
 class Head(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -234,5 +232,5 @@ class GPTLanguageModel(nn.Module):
         return idx
 
 
-if __name__ == "__main__":
-    model = GPTLanguageModel(SUPER_SUPER_LARGE_CHATGPT_CONFIG)
+# if __name__ == "__main__":
+    # model = GPTLanguageModel(SUPER_SUPER_LARGE_CHATGPT_CONFIG)
