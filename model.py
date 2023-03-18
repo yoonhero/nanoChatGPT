@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from utils import device
-
 class Head(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -190,7 +188,7 @@ class GPTLanguageModel(nn.Module):
         # when we pass the idx to the token embedding table 
         # we get a embedidng tensor by the idx and get by one by one
         token_emb = self.token_embedding_table(idx) # (B, T, C)
-        pos_emb = self.positional_embedding_table(torch.arange(T, device=device)) # (T, C)
+        pos_emb = self.positional_embedding_table(torch.arange(T, device="cuda")) # (T, C)
         x = token_emb + pos_emb
         x = self.dropout(x)
         # x = self.sa_heads(x)
