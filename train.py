@@ -50,24 +50,32 @@ def main(args):
     PATH = args.path
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
+    wandb = args.wandb
+    max_dataset_size = args.max_dataset_size
 
     config = getConfig(args.model_size)
 
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="small-chatgpt",
-        
-        # track hyperparameters and run metadata
-        config={
-        "architecture": "GPT",
-        "dataset": "Custom Corpus Dataset",
-        "epochs": max_iters,
-        }
-    )
+    if wandb:
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project="small-chatgpt",
+            
+            # track hyperparameters and run metadata
+            config={
+            "architecture": "GPT",
+            "dataset": "Custom Corpus Dataset",
+            "epochs": max_iters,
+            "block_size": config.block_size,
+            "d_model": config.n_embd,
+            "n_heads": config.n_heads,
+            "n_layer": config.n_layer,
+            "vocab": config.vocab_size
+            }
+        )
 
     os.makedirs(PATH, exist_ok=True)
 
-    dataset = GPTDataset(TXT_FILE_PATH, block_size=config.block_size)
+    dataset = GPTDataset(TXT_FILE_PATH, block_size=config.block_size, max_dataset_size=max_dataset_size)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -75,8 +83,8 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
 
-
     mean = lambda li: sum(li)/len(li)
+
     @torch.no_grad()
     def estimate_loss(model):
         out = {}
@@ -103,19 +111,21 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
-    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=50, max_iters=max_iters)
+    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
         if (iter-start_epoch) % eval_interval == 0:
             losses = estimate_loss(model=model)
             print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-            wandb.log({
-                "iter": iter,
-                "train/loss": losses['train'],
-                "val/loss": losses['val'],
-                "lr": lr_scheduler.get_lr()[0],
-            })
+
+            if wandb:
+                wandb.log({
+                    "iter": iter,
+                    "train/loss": losses['train'],
+                    "val/loss": losses['val'],
+                    "lr": lr_scheduler.get_lr()[0],
+                })
         if (iter-start_epoch+1) % save_interval == 0:
             save_model(iter+1, model, optimizer, PATH)
 
@@ -132,7 +142,8 @@ def main(args):
         print(f"Epoch: {iter} | Loss: {mean(losses)}")
 
     # finish wandb
-    wandb.finish()
+    if wandb:
+        wandb.finish()
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
@@ -155,6 +166,8 @@ if __name__ == "__main__":
     parser.add_argument("--txt_file_path", type=str, default=TXT_FILE_PATH)
     parser.add_argument('--load_model', action='store_true')
     parser.add_argument("--model_size", type=str, default="large")
+    parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--max_dataset_size", type=int, default=1000000)
 
     args = parser.parse_args()
 

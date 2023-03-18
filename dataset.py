@@ -9,12 +9,12 @@ from tokenizer import tokenizer
 
 # Data Loading Optimization
 class GPTDataset(Dataset):
-    def __init__(self, txt_file, block_size):
+    def __init__(self, txt_file, block_size, max_dataset_size):
         self.block_size = block_size
         
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
-            self.tokens = f.read()[:40000000]
+            self.tokens = f.read()[:max_dataset_size]
         print(f"Loading Corpus File Done!")
 
         print("Tokenizing...")
@@ -29,7 +29,7 @@ class GPTDataset(Dataset):
     def __getitem__(self, idx):
         start_idx = idx * self.block_size
         end_idx = (idx + 1) * self.block_size
-        tokens = self.encoded_token[start_idx:end_idx]
+        tokens = self.encoded_token[start_idx:end_idx+1]
         x = torch.tensor(tokens[:-1]).long()
         y = torch.tensor(tokens[1:]).long()
         
