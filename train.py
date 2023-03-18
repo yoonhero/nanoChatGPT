@@ -7,7 +7,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 import pandas as pd
-import wandb
+# import wandb
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
@@ -79,18 +79,18 @@ def main(args):
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
 
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="small-chatgpt",
+    # wandb.init(
+    #     # set the wandb project where this run will be logged
+    #     project="small-chatgpt",
         
-        # track hyperparameters and run metadata
-        config={
-        "learning_rate": learning_rate,
-        "architecture": "GPT",
-        "dataset": "Custom Corpus Dataset",
-        "epochs": max_iters,
-        }
-    )
+    #     # track hyperparameters and run metadata
+    #     config={
+    #     "learning_rate": learning_rate,
+    #     "architecture": "GPT",
+    #     "dataset": "Custom Corpus Dataset",
+    #     "epochs": max_iters,
+    #     }
+    # )
 
     os.makedirs(PATH, exist_ok=True)
 
@@ -149,10 +149,10 @@ def main(args):
             scheduler.step()
 
         print(f"Loss: {sum(losses)/len(losses)}")
-        wandb.log({"loss": sum(losses)/len(losses)})
+        # wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb
-    wandb.finish()
+    # wandb.finish()
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)

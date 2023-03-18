@@ -29,7 +29,7 @@ class GPTConfig:
 #100277
 SUPER_SMALL_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=2, dropout=0.2, vocab_size=10000)
 S_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=1, dropout=0.2, vocab_size=50257)
-LARGE_GPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=50257)
+LARGE_GPT_CONFIG = GPTConfig(block_size=128, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=50257)
 LARGE_CHATGPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=6, dropout=0.2, vocab_size=100277)
 SUPER_LARGE_CHATGPT_CONFIG = GPTConfig(block_size=512, n_embd=512, n_heads=32, n_layer=12, dropout=0.2, vocab_size=1000000)
 SUPER_SUPER_LARGE_CHATGPT_CONFIG = GPTConfig(block_size=2048, n_embd=1024, n_heads=32, n_layer=12, dropout=0.2, vocab_size=1000000)
