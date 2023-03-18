@@ -8,12 +8,14 @@ import os
 import numpy as np
 import pandas as pd
 import wandb
+from transformers import AutoTokenizer
+import tqdm
 
 from model import GPTLanguageModel
 from utils import load_model, save_model,getConfig
 from dataset import GPTDataset
 from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH
-from tokenizer import tokenizer
+
 
 # enc = tiktoken.get_encoding("gpt2")
 # encode = lambda s: enc.encode(s)
@@ -21,9 +23,6 @@ from tokenizer import tokenizer
 # enc = Tokenizer()
 # encode = lambda s: enc.encode(s)
 # decode = lambda s: enc.decode(s)
-enc = tokenizer
-encode = lambda x: enc.encode(x)
-decode = lambda x: enc.decode(x)
 
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, warmup, max_iters):
@@ -51,7 +50,14 @@ def main(args):
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
     wandb = args.wandb
-    max_dataset_size = args.max_dataset_size
+    # max_dataset_size = args.max_dataset_size
+    with_lr_scheduler = args.with_lr_scheduler
+
+    # KoGPT Tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+    'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+    bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+    )
 
     config = getConfig(args.model_size)
 
@@ -75,7 +81,7 @@ def main(args):
 
     os.makedirs(PATH, exist_ok=True)
 
-    dataset = GPTDataset(TXT_FILE_PATH, block_size=config.block_size, max_dataset_size=max_dataset_size)
+    dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -111,7 +117,8 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
-    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
+    if with_lr_scheduler:
+        lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
@@ -130,14 +137,16 @@ def main(args):
             save_model(iter+1, model, optimizer, PATH)
 
         losses = []
-        for idx, (x, y) in enumerate(train_loader):
+        for idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")):
             # evaluate the loss
             _, loss = model(x, y)
             optimizer.zero_grad(set_to_none=True)
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
-            lr_scheduler.step()
+
+            if with_lr_scheduler:
+                lr_scheduler.step()
 
         print(f"Epoch: {iter} | Loss: {mean(losses)}")
 
@@ -146,6 +155,7 @@ def main(args):
         wandb.finish()
 
     # generate samples
+    decode = lambda x: tokenizer.decode(x)
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
@@ -167,7 +177,8 @@ if __name__ == "__main__":
     parser.add_argument('--load_model', action='store_true')
     parser.add_argument("--model_size", type=str, default="large")
     parser.add_argument("--wandb", action="store_true")
-    parser.add_argument("--max_dataset_size", type=int, default=1000000)
+    # parser.add_argument("--max_dataset_size", type=int, default=1000000)
+    parser.add_argument("--with_lr_scheduler", action="store_true")
 
     args = parser.parse_args()
 

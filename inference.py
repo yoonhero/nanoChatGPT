@@ -1,13 +1,17 @@
 # import tiktoken
 import torch
 import argparse
+from transformers import AutoTokenizer
 
 import utils
-from utils import getConfig
 from config import MODEL_PATH, device
-from tokenizer import tokenizer
 
-enc = tokenizer
+
+# KoGPT Tokenizer
+enc = AutoTokenizer.from_pretrained(
+  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+)
 encode = lambda x: enc.encode(x)
 decode = lambda x: enc.decode(x)
 

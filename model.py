@@ -103,9 +103,9 @@ class FeedForward(nn.Module):
         self.dropout = config.dropout
         self.net = nn.Sequential(
             nn.Linear(self.n_embd, 4*self.n_embd, bias=False),
-            # nn.ReLU(),
+            nn.ReLU(),
             # SwiGLU for better result => LLAMA
-            nn.SiLU(),
+            # nn.SiLU(),
             nn.Linear(4*self.n_embd, self.n_embd, bias=False),
             nn.Dropout(self.dropout)
         )
@@ -203,7 +203,7 @@ class GPTLanguageModel(nn.Module):
             B, T, C = logits.shape
             logits = logits.view(B*T, C)
             targets = targets.view(B*T)
-            loss = F.cross_entropy(logits, targets)
+            loss = F.cross_entropy(logits, targets, ignore_index=-1)
 
         return logits, loss
 
