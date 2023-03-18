@@ -23,7 +23,7 @@ class GPTDataset(Dataset):
     def __init__(self, txt_file, tokenizer, block_size):
         self.block_size = block_size
         self.tokenizer = tokenizer
-        self.encode = lambda x: self.tokenizer.encode(x, add_special_tokens=True, max_length=block_size+1, pad_to_max_length=True, truncation=True)        
+        self.encode = lambda x: self.tokenizer.encode(x, add_special_tokens=True, max_length=block_size+1, padding=True, truncation=True)        
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
             self.tokens = f.read()

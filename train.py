@@ -131,7 +131,7 @@ def main(args):
                     "iter": iter,
                     "train/loss": losses['train'],
                     "val/loss": losses['val'],
-                    "lr": lr_scheduler.get_lr()[0],
+                    "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
                 })
         if (iter-start_epoch+1) % save_interval == 0:
             save_model(iter+1, model, optimizer, PATH)
