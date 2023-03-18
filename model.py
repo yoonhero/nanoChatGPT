@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+from utils import device
+
 class Head(nn.Module):
     def __init__(self, config):
         super().__init__()
