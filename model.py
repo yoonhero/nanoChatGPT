@@ -153,8 +153,8 @@ class GPTLanguageModel(nn.Module):
         # each toekn directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
         self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
-        self.sa_heads = MultiHeadAttention(config)
-        # self.dropout = nn.Dropout(self.dropout)
+        # self.sa_heads = MultiHeadAttention(config)
+        self.dropout = nn.Dropout(self.dropout)
         # feed forward layer is needed for think about the self attention score 
         # when we pass the self attention score straight forward to the last layer 
         # it's hard to think about the meaning of the score
@@ -162,11 +162,11 @@ class GPTLanguageModel(nn.Module):
         self.ln_f = nn.LayerNorm(self.n_embd)
         self.lm_head = nn.Linear(self.n_embd, self.vocab_size)
 
-        # self.apply(self._init_weights)
+        self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
-        # for pn, p in self.named_parameters():
-        #     if pn.endswith('c_proj.weight'):
-        #         torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
 
         print(f"Number of parameters: {self.get_num_params()}")
 
@@ -191,8 +191,8 @@ class GPTLanguageModel(nn.Module):
         token_emb = self.token_embedding_table(idx) # (B, T, C)
         pos_emb = self.positional_embedding_table(torch.arange(T, device="cuda")) # (T, C)
         x = token_emb + pos_emb
-        # x = self.dropout(x)
-        x = self.sa_heads(x)
+        x = self.dropout(x)
+        # x = self.sa_heads(x)
         x = self.blocks(x)
         x = self.ln_f(x)
         logits = self.lm_head(x) # (B, T, vocab_size)
@@ -210,12 +210,7 @@ class GPTLanguageModel(nn.Module):
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         for _ in range(max_new_tokens):
-            # get the prediction
-            # print(idx.shape, max_new_tokens)
-            if idx.shape[1] > self.block_size:
-                idx_cond = idx[:, -self.block_size:]
-            else: 
-                idx_cond = idx
+            idx_cond = idx[:, -self.block_size:]
 
             logits, _ = self(idx_cond)
             # focus only on the last time step
@@ -232,6 +227,3 @@ class GPTLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
 
-
-# if __name__ == "__main__":
-    # model = GPTLanguageModel(SUPER_SUPER_LARGE_CHATGPT_CONFIG)
