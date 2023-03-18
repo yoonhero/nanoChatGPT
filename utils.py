@@ -1,7 +1,7 @@
 import glob 
 import torch
 from model import GPTLanguageModel
-from config import learning_rate, device, S_GPT_CONFIG, LARGE_GPT_CONFIG
+from config import learning_rate, device 
 
 def save_model(epoch, model, optimizer, PATH):
     model_state_dict = {
@@ -9,7 +9,7 @@ def save_model(epoch, model, optimizer, PATH):
         "optimizer": optimizer.state_dict(),
         "epoch": epoch
     }   
-    torch.save(model_state_dict, PATH+f"{epoch}.tar")
+    torch.save(model_state_dict, PATH+f"epoch-{epoch}.tar")
 
 def get_last_epoch(PATH: str) -> int:
     """Get the last epoch and TAR file"""
@@ -20,9 +20,9 @@ def get_last_epoch(PATH: str) -> int:
     epochs = [int(filename.split("/")[-1].split(".")[0]) for filename in files]
     return max(epochs)
 
-def load_model(PATH):
-    model = GPTLanguageModel(LARGE_GPT_CONFIG).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.9)
+def load_model(PATH, config):
+    model = GPTLanguageModel(config).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
 
     # last_epoch = get_last_epoch(PATH)
     # model_state_dict = torch.load(PATH + f"{last_epoch}.tar")

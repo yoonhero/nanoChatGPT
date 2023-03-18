@@ -97,7 +97,7 @@ def main(args):
         return out
 
     if load:
-        model, optimizer, start_epoch = load_model(PATH)
+        model, optimizer, start_epoch = load_model(PATH, config)
     else: 
         model = GPTLanguageModel(config).to(device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
