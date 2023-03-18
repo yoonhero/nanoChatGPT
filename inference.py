@@ -3,6 +3,7 @@ import torch
 import argparse
 
 import utils
+from utils import getConfig
 from config import MODEL_PATH, device
 from tokenizer import tokenizer
 
@@ -15,7 +16,8 @@ def main(args):
     max_tokens = args.max_tokens
     start_tokens = args.start
     result = encode(start_tokens)
-    model, _, _ = utils.load_model(model_path)
+    config = utils.getConfig(args.model_size)
+    model, _, _ = utils.load_model(model_path, config)
     model.eval()
 
     if start_tokens == "":
@@ -37,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_tokens", type=int, default=1000)
     parser.add_argument("--path", type=str, default=MODEL_PATH)
     parser.add_argument("--start", type=str, default="")
+    parser.add_argument("--model_size", type=str, default="large")
 
     args = parser.parse_args()
 

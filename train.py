@@ -7,12 +7,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 import pandas as pd
-# import wandb
+import wandb
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
 from dataset import GPTDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, getConfig
 from tokenizer import tokenizer
 
 # enc = tiktoken.get_encoding("gpt2")
@@ -51,33 +51,32 @@ def main(args):
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
 
-    configs = {"small":SMALL_GPT_CONFIG, "large":LARGE_GPT_CONFIG, "KOGPT":KOGPT_CONFIG}
-    assert args.model_size in configs.keys(), "Please Choose Appropriate Model Size"
-    config = configs[args.model_size]
+    config = getConfig(args.model_size)
 
-    # wandb.init(
-    #     # set the wandb project where this run will be logged
-    #     project="small-chatgpt",
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="small-chatgpt",
         
-    #     # track hyperparameters and run metadata
-    #     config={
-    #     "learning_rate": learning_rate,
-    #     "architecture": "GPT",
-    #     "dataset": "Custom Corpus Dataset",
-    #     "epochs": max_iters,
-    #     }
-    # )
+        # track hyperparameters and run metadata
+        config={
+        "architecture": "GPT",
+        "dataset": "Custom Corpus Dataset",
+        "epochs": max_iters,
+        }
+    )
 
     os.makedirs(PATH, exist_ok=True)
 
-    dataset = GPTDataset(TXT_FILE_PATH, block_size=LARGE_GPT_CONFIG.block_size)
+    dataset = GPTDataset(TXT_FILE_PATH, block_size=config.block_size)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
 
+
+    mean = lambda li: sum(li)/len(li)
     @torch.no_grad()
     def estimate_loss(model):
         out = {}
@@ -85,14 +84,15 @@ def main(args):
         for split in ["train", "val"]:
             losses = []
             if split == "train":
-                for X, Y in train_loader:
-                    _, loss = model(X, Y)
-                    losses.append(loss.item())
+                d = train_loader
             elif split == "val":
-                for X, Y in val_loader:
-                    _, loss = model(X, Y)
-                    losses.append(loss.item())      
-            out[split] = loss.mean()
+                d = val_loader
+            
+            for X, Y in d:
+                _, loss = model(X, Y)
+                losses.append(loss.item())
+
+            out[split] = mean(losses)
         model.train()
         return out
 
@@ -100,17 +100,22 @@ def main(args):
         model, optimizer, start_epoch = load_model(PATH, config)
     else: 
         model = GPTLanguageModel(config).to(device)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
     lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=50, max_iters=max_iters)
-    # scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
-        if iter % eval_interval == 0:
+        if (iter-start_epoch) % eval_interval == 0:
             losses = estimate_loss(model=model)
             print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+            wandb.log({
+                "iter": iter,
+                "train/loss": losses['train'],
+                "val/loss": losses['val'],
+                "lr": lr_scheduler.get_lr(),
+            })
         if (iter-start_epoch+1) % save_interval == 0:
             save_model(iter+1, model, optimizer, PATH)
 
@@ -124,11 +129,10 @@ def main(args):
             optimizer.step()
             lr_scheduler.step()
 
-        print(f"Epoch: {iter} | Loss: {sum(losses)/len(losses)}")
-        # wandb.log({"loss": sum(losses)/len(losses)})
+        print(f"Epoch: {iter} | Loss: {mean(losses)}")
 
     # finish wandb
-    # wandb.finish()
+    wandb.finish()
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)

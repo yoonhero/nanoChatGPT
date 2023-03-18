@@ -14,7 +14,7 @@ class GPTDataset(Dataset):
         
         print(f"Loading Enormous Corpus Start...")
         with open(txt_file, "r") as f:
-            self.tokens = f.read()[:1000000]
+            self.tokens = f.read()[:100000000]
         print(f"Loading Corpus File Done!")
 
         print("Tokenizing...")
