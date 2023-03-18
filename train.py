@@ -103,7 +103,7 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
         start_epoch = 0
 
-    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=40, max_iters=max_iters)
+    lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=50, max_iters=max_iters)
     # scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
     for iter in range(start_epoch, start_epoch+max_iters):

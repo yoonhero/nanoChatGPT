@@ -26,7 +26,7 @@ class GPTConfig:
 
 # GPT-3.5 Tokenizer = 100277
 SMALL_GPT_CONFIG = GPTConfig(block_size=32, n_embd=32, n_heads=16, n_layer=2, vocab_size=10000)
-LARGE_GPT_CONFIG = GPTConfig(block_size=128, n_embd=512, n_heads=32, n_layer=6, vocab_size=64512)
+LARGE_GPT_CONFIG = GPTConfig(block_size=128, n_embd=256, n_heads=16, n_layer=6, vocab_size=64512)
 SUPER_LARGE_GPT_CONFIG = GPTConfig(block_size=512, n_embd=1024, n_heads=16, n_layer=16, vocab_size=64512)
 KOGPT_CONFIG = GPTConfig(block_size=2048, n_embd=4096, n_heads=16, n_layer=28, vocab_size=64512)
 ULTRA_SUPER_SUPER_LARGE_LARGE_CHATGPT_CONFIG = GPTConfig(block_size=8192, n_embd=1024, n_heads=64, n_layer=12, dropout=0.2, vocab_size=100000)
