@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 import tiktoken
 import argparse
-from torch.utils.data import Dataset, random_split, DataLoader
+from torch.utils.data import random_split, DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
@@ -11,46 +11,19 @@ import pandas as pd
 
 from model import GPTLanguageModel
 from utils import load_model, save_model
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, load, GPTConfig, S_GPT_CONFIG, LARGE_GPT_CONFIG, SUPER_SMALL_GPT_CONFIG
-from tokenizer import CustomTokenizer as Tokenizer
+from dataset import GPTDataset
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG
+from tokenizer import tokenizer
 
-enc = tiktoken.get_encoding("gpt2")
-# enc.special_tokens_set
-encode = lambda s: enc.encode(s)
-decode = lambda l: enc.decode(l)
+# enc = tiktoken.get_encoding("gpt2")
+# encode = lambda s: enc.encode(s)
+# decode = lambda l: enc.decode(l)
 # enc = Tokenizer()
 # encode = lambda s: enc.encode(s)
 # decode = lambda s: enc.decode(s)
-
-# Data Loading Optimization
-class GPTDataset(Dataset):
-    def __init__(self, txt_file, block_size):
-        self.block_size = block_size
-        
-        print(f"Loading Enormous Corpus Start...")
-        with open(txt_file, "r") as f:
-            # self.tokens = f.read()[:1000000].split()
-            self.tokens = f.read()[:100000]
-        print(f"Loading Corpus File Done!")
-
-        print("Tokenizing...")
-        self.encoded_token = encode(self.tokens)
-        self.length = len(self.encoded_token) // self.block_size
-        print(f"Dataset Size: {len(self.encoded_token)}")
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        start_idx = idx * self.block_size
-        end_idx = (idx + 1) * self.block_size
-        tokens = self.encoded_token[start_idx:end_idx]
-        x = torch.tensor(tokens[:-1]).long()
-        y = torch.tensor(tokens[1:]).long()
-        
-        x, y = x.to(device), y.to(device)
-        return x, y
-
+enc = tokenizer
+encode = lambda x: enc.encode(x)
+decode = lambda x: enc.decode(x)
 
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, warmup, max_iters):
@@ -68,7 +41,6 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
    
-
 def main(args):
     batch_size = args.batch_size
     max_iters = args.max_iters
@@ -78,6 +50,10 @@ def main(args):
     PATH = args.path
     TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
+
+    configs = {"small":SMALL_GPT_CONFIG, "large":LARGE_GPT_CONFIG, "KOGPT":KOGPT_CONFIG}
+    assert args.model_size in configs.keys(), "Please Choose Appropriate Model Size"
+    config = configs[args.model_size]
 
     # wandb.init(
     #     # set the wandb project where this run will be logged
@@ -123,8 +99,8 @@ def main(args):
     if load:
         model, optimizer, start_epoch = load_model(PATH)
     else: 
-        model = GPTLanguageModel(LARGE_GPT_CONFIG).to(device)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
+        model = GPTLanguageModel(config).to(device)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
         start_epoch = 0
 
     lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=40, max_iters=max_iters)
@@ -135,20 +111,20 @@ def main(args):
         if iter % eval_interval == 0:
             losses = estimate_loss(model=model)
             print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-        if iter % save_interval == 0:
-            save_model(iter, model, optimizer, PATH)
+        if (iter-start_epoch+1) % save_interval == 0:
+            save_model(iter+1, model, optimizer, PATH)
 
-        losses = []
+        # losses = []
         for idx, (x, y) in enumerate(train_loader):
             # evaluate the loss
             _, loss = model(x, y)
             optimizer.zero_grad(set_to_none=True)
-            losses.append(loss.item())
+            # losses.append(loss.item())
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
 
-        print(f"Loss: {sum(losses)/len(losses)}")
+        # print(f"Loss: {sum(losses)/len(losses)}")
         # wandb.log({"loss": sum(losses)/len(losses)})
 
     # finish wandb
@@ -156,7 +132,6 @@ def main(args):
 
     # generate samples
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
-    # print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
     with open('result.txt', "w") as f:
@@ -175,11 +150,8 @@ if __name__ == "__main__":
     parser.add_argument("--path", type=str, default=MODEL_PATH)
     parser.add_argument("--txt_file_path", type=str, default=TXT_FILE_PATH)
     parser.add_argument('--load_model', action='store_true')
+    parser.add_argument("--model_size", type=str, default="large")
 
     args = parser.parse_args()
 
     main(args)
-
-    # d = GPTDataset("./dataset/data.txt", 1000)
-
-    # print(d[0])

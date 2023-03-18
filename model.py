@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+
 from config import device, SUPER_SMALL_GPT_CONFIG, LARGE_GPT_CONFIG, SUPER_LARGE_CHATGPT_CONFIG, SUPER_SUPER_LARGE_CHATGPT_CONFIG
 
 class Head(nn.Module):
@@ -80,14 +81,19 @@ class CasualAttention(nn.Module):
     def forward(self, x):
         B, T, C = x.size()
 
+        # calculate query and key and value parallel and split it
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
-
-        att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1)))
-        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+        # (B, T, N_HEADS, HEAD_SIZE) -> (B, N_HEADS, T, HEAD_SIZE)
+        k = k.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
+        v = v.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
+        q = q.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
+        
+        att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1))) # (B, N_HEADS, T, T)
+        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf')) 
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
-        y = att @ v     
-        y = y.transpose(1, 2).contiguous().view(B, T, C)
+        y = att @ v # (B, nh, T, hs)
+        y = y.transpose(1, 2).contiguous().view(B, T, C) # (B, T, C)
 
         y = self.resid_drop(self.c_proj(y))
         return y
@@ -149,7 +155,7 @@ class GPTLanguageModel(nn.Module):
         # each toekn directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
         self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
-        self.sa_heads = MultiHeadAttention(config)
+        self.dropout = nn.Dropout(self.dropout)
         # feed forward layer is needed for think about the self attention score 
         # when we pass the self attention score straight forward to the last layer 
         # it's hard to think about the meaning of the score
@@ -186,7 +192,8 @@ class GPTLanguageModel(nn.Module):
         token_emb = self.token_embedding_table(idx) # (B, T, C)
         pos_emb = self.positional_embedding_table(torch.arange(T, device=device)) # (T, C)
         x = token_emb + pos_emb
-        x = self.sa_heads(x)
+        x = self.dropout(x)
+        # x = self.sa_heads(x)
         x = self.blocks(x)
         x = self.ln_f(x)
         logits = self.lm_head(x) # (B, T, vocab_size)

@@ -3,7 +3,13 @@ from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
+from transformers import AutoTokenizer
 
+# KoGPT Tokenizer
+tokenizer = AutoTokenizer.from_pretrained(
+  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+)
 
 class CustomTokenizer():
     def __init__(self, tokenizer_path="./vocab/tokenizer"):        

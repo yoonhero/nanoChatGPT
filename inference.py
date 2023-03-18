@@ -4,14 +4,11 @@ import argparse
 
 import utils
 from config import MODEL_PATH, device
-from tokenizer import CustomTokenizer as Tokenizer
+from tokenizer import tokenizer
 
-# enc = tiktoken.get_encoding("gpt2")
-# encode = lambda s: enc.encode(s)
-# decode = lambda l: enc.decode(l)
-enc = Tokenizer()
-encode = lambda s: enc.encode(s)
-decode = lambda s: enc.decode(s)
+enc = tokenizer
+encode = lambda x: enc.encode(x)
+decode = lambda x: enc.decode(x)
 
 def main(args):
     model_path = args.path
@@ -32,14 +29,14 @@ def main(args):
         context = context.unsqueeze(0)
         result = decode(model.generate(context, max_new_tokens=max_tokens)[0].tolist())
 
-        print(f"{result}\n\n")
+        print(f"\n\n{result}\n\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
+    parser = argparse.ArgumentParser(description='Inference My Custom GPT 🚀!!!')
 
     parser.add_argument("--max_tokens", type=int, default=1000)
     parser.add_argument("--path", type=str, default=MODEL_PATH)
-    parser.add_argument("--start", type=str)
+    parser.add_argument("--start", type=str, default="")
 
     args = parser.parse_args()
 
