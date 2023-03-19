@@ -15,6 +15,7 @@ enc = AutoTokenizer.from_pretrained(
 encode = lambda x: enc.encode(x)
 decode = lambda x: enc.decode(x)
 
+@torch.no_grad()
 def main(args):
     model_path = args.path
     max_tokens = args.max_tokens
@@ -28,14 +29,13 @@ def main(args):
         result = input("")
         result = encode(result)
 
-    with torch.no_grad():
-        # for i in range(max_tokens):
-        # generate from the model
-        context = torch.tensor(result, dtype=torch.long, device=device)
-        context = context.unsqueeze(0)
-        result = decode(model.generate(context, max_new_tokens=max_tokens)[0].tolist())
+    # for i in range(max_tokens):
+    # generate from the model
+    context = torch.tensor(result, dtype=torch.long, device=device)
+    context = context.unsqueeze(0)
+    result = decode(model.generate(context, max_new_tokens=max_tokens)[0].tolist())
 
-        print(f"\n\n{result}\n\n")
+    print(f"\n\n{result}\n\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Inference My Custom GPT 🚀!!!')

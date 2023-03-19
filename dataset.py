@@ -30,7 +30,7 @@ class GPTDataset(Dataset):
         print(f"Loading Corpus File Done!")
 
         # self.encoded_token = tokenizer.encode(self.tokens)
-        self.length = len(self.tokens) // (self.block_size+1) - 1
+        self.length = len(self.tokens) // (self.block_size+1) - 4
         print(f"Dataset Size: {len(self.tokens)}")
 
     def __len__(self):
@@ -38,10 +38,11 @@ class GPTDataset(Dataset):
 
     def __getitem__(self, idx):
         start_idx = idx * self.block_size
-        end_idx = (idx + 1) * self.block_size
+        end_idx = (idx + 3) * self.block_size
         # tokens = self.encoded_token[start_idx:end_idx+1]
         t = self.tokens[start_idx: end_idx+1]
         tokens = self.encode(t)
+        print(tokens, len(tokens))
         x = torch.tensor(tokens[:-1]).long()
         y = torch.tensor(tokens[1:]).long()
         
