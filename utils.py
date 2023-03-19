@@ -27,7 +27,7 @@ def load_model(PATH, config):
     assert PATH[-1] == "/", "Please Check the PATH Arguments"
     last_epoch = get_last_epoch(PATH)
     model_state_dict = torch.load(PATH + f"epoch-{last_epoch}.tar")
-    model_state_dict = torch.load(PATH)
+    # model_state_dict = torch.load(PATH)
 
     model.load_state_dict(model_state_dict["model"])
     optimizer.load_state_dict(model_state_dict["optimizer"])
