@@ -2,7 +2,9 @@
 
 ## TODOS
 
+- [ ] Crawling Good Web Source and Construct Dataset
 - [ ] Pretrain GPT with Korean Dataset (NAVER, NAMU, WIKIPEDIA...)
+- [ ] Model Improvement (RoFormer, ALBERT, SiLU, GELU, etc)
 - [ ] Prepare Prompt for prompt engineering
 - [ ] Prompt Translation for Korean Data.
 - [ ] Fine-tuning GPT with custom prompt.

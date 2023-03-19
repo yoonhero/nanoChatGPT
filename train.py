@@ -6,10 +6,9 @@ from torch.utils.data import random_split, DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
-import pandas as pd
-import wandb
 from transformers import AutoTokenizer
 from tqdm import tqdm
+import math
 
 from model import GPTLanguageModel
 from utils import load_model, save_model,getConfig
@@ -23,22 +22,6 @@ from config import batch_size, max_iters, eval_interval, save_interval, learning
 # enc = Tokenizer()
 # encode = lambda s: enc.encode(s)
 # decode = lambda s: enc.decode(s)
-
-class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, warmup, max_iters):
-        self.warmup = warmup
-        self.max_num_iters = max_iters
-        super().__init__(optimizer)
-
-    def get_lr(self):
-        lr_factor = self.get_lr_factor(epoch=self.last_epoch)
-        return [base_lr * lr_factor for base_lr in self.base_lrs]
-
-    def get_lr_factor(self, epoch):
-        lr_factor = 0.5 * (1 + np.cos(np.pi * epoch / self.max_num_iters))
-        if epoch <= self.warmup:
-            lr_factor *= epoch * 1.0 / self.warmup
-        return lr_factor
    
 def main(args):
     batch_size = args.batch_size
@@ -54,6 +37,25 @@ def main(args):
     with_lr_scheduler = args.with_lr_scheduler
     encoding = args.encoding
 
+    warmup_iters = 200 # how many steps to warm up for
+    lr_decay_iters = 6000 # should be ~= max_iters per Chinchilla
+    min_lr = 6e-5
+    # learning rate decay scheduler (cosine with warmup)
+    def get_lr(it):
+        # 1) linear warmup for warmup_iters steps
+        if it < warmup_iters:
+            return learning_rate * it / warmup_iters
+        # 2) if it > lr_decay_iters, return min learning rate
+        if it > lr_decay_iters:
+            return min_lr
+        # 3) in between, use cosine decay down to min learning rate
+        decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+        assert 0 <= decay_ratio <= 1
+        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
+        return min_lr + coeff * (learning_rate - min_lr)
+
+        
+
     # KoGPT Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
     'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
@@ -63,6 +65,7 @@ def main(args):
     config = getConfig(args.model_size)
 
     if is_wandb:
+        import wandb
         wandb.init(
             # set the wandb project where this run will be logged
             project="small-chatgpt",
@@ -117,11 +120,14 @@ def main(args):
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
 
-    if with_lr_scheduler:
-        lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
+    # lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
 
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
+        lr = get_lr(iter) if with_lr_scheduler else learning_rate 
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
         losses = []
         for idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")):
             # evaluate the loss
@@ -131,8 +137,8 @@ def main(args):
             loss.backward()
             optimizer.step()
 
-            if with_lr_scheduler:
-                lr_scheduler.step()
+            # if with_lr_scheduler:
+            #     lr_scheduler.step()
 
         print(f"Epoch: {iter} | Loss: {mean(losses)}")
 
@@ -160,7 +166,7 @@ def main(args):
 
 
     # finish wandb
-    if wandb:
+    if is_wandb:
         wandb.finish()
 
     # generate samples
