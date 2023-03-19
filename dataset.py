@@ -20,12 +20,12 @@ from config import device
 
 # Data Loading Optimization
 class GPTDataset(Dataset):
-    def __init__(self, txt_file, tokenizer, block_size):
+    def __init__(self, txt_file, tokenizer, block_size, encoding):
         self.block_size = block_size
         self.tokenizer = tokenizer
         self.encode = lambda x: self.tokenizer.encode(x, add_special_tokens=True, max_length=block_size+1, padding=True, truncation=True)        
         print(f"Loading Enormous Corpus Start...")
-        with open(txt_file, "r") as f:
+        with open(txt_file, "r", encoding=encoding) as f:
             self.tokens = f.read()
         print(f"Loading Corpus File Done!")
 

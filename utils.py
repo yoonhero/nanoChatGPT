@@ -17,15 +17,16 @@ def get_last_epoch(PATH: str) -> int:
     if len(files) == 0:
         return None
     
-    epochs = [int(filename.split("/")[-1].split(".")[0]) for filename in files]
+    epochs = [int(filename.split("/")[-1].split(".")[0].split("-")[-1]) for filename in files]
     return max(epochs)
 
 def load_model(PATH, config):
     model = GPTLanguageModel(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
 
-    # last_epoch = get_last_epoch(PATH)
-    # model_state_dict = torch.load(PATH + f"{last_epoch}.tar")
+    assert PATH[-1] == "/", "Please Check the PATH Arguments"
+    last_epoch = get_last_epoch(PATH)
+    model_state_dict = torch.load(PATH + f"epoch-{last_epoch}.tar")
     model_state_dict = torch.load(PATH)
 
     model.load_state_dict(model_state_dict["model"])

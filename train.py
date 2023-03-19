@@ -52,6 +52,7 @@ def main(args):
     is_wandb = args.wandb
     # max_dataset_size = args.max_dataset_size
     with_lr_scheduler = args.with_lr_scheduler
+    encoding = args.encoding
 
     # KoGPT Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -79,9 +80,7 @@ def main(args):
             }
         )
 
-    os.makedirs(PATH, exist_ok=True)
-
-    dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size)
+    dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -113,6 +112,7 @@ def main(args):
     if load:
         model, optimizer, start_epoch = load_model(PATH, config)
     else: 
+        os.makedirs(PATH, exist_ok=True)
         model = GPTLanguageModel(config).to(device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
         start_epoch = 0
@@ -188,6 +188,7 @@ if __name__ == "__main__":
     parser.add_argument("--wandb", action="store_true")
     # parser.add_argument("--max_dataset_size", type=int, default=1000000)
     parser.add_argument("--with_lr_scheduler", action="store_true")
+    parser.add_argument("--encoding", type=str, default="utf-8")
 
     args = parser.parse_args()
 
