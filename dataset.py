@@ -61,10 +61,12 @@ class TokenedDataset(Dataset):
             file_path:str, 
             tokenizer:AutoTokenizer, 
             block_size:int, 
+            load_mode: str="xml",
             from_cache:bool=False, 
             save_cache: bool=False, 
             cache_destination: str = "dataset_cache.tar.gz",
-            device:str="cuda"
+            device="cuda",
+            encoding: str="utf-8"
         ):
         self.device = device
         self.block_size = block_size
@@ -76,8 +78,14 @@ class TokenedDataset(Dataset):
                 self.tokens = np.load(f)
             self.num_subsets = self.tokens.shape[0]
             return
-
-        self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size)
+        
+        mode = ["xml", "txt", "csv"]
+        assert load_mode in mode, "Please Select Appropriate Mode for Dataset Loading."
+        if load_mode=="xml":
+            self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size)
+        else:
+            # TODO: Make another modes
+            pass
         self.num_subsets = self.tokens.shape[0]
 
         if save_cache:

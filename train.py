@@ -7,14 +7,13 @@ import torch.optim.lr_scheduler as lr_scheduler
 import os
 import numpy as np
 from transformers import AutoTokenizer
-from tqdm import tqdm
+import tqdm
 import math
-from pytorch_lightning import Trainer
 
 from model import GPTLanguageModel, GPT
 from utils import load_model, save_model,getConfig
-from dataset import GPTDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, GPTConfig
+from dataset import GPTDataset, TokenedDataset
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH,  GPTConfig
 
 def main(args):
     batch_size = args.batch_size
@@ -22,13 +21,19 @@ def main(args):
     learning_rate = args.learning_rate
     eval_interval = args.eval_interval
     save_interval = args.save_interval
+    gradient_accumulation_interval = args.accumulate_interval
     PATH = args.path
-    TXT_FILE_PATH = args.txt_file_path
     load = args.load_model
     is_wandb = args.wandb
     # max_dataset_size = args.max_dataset_size
     with_lr_scheduler = args.with_lr_scheduler
     encoding = args.encoding
+
+    load_mode = args.load_mode
+    dataset_path = args.dataset_path
+    from_cache = args.from_cache
+    save_cache = args.save_cache
+    cache_directory = args.cache_directory
 
     warmup_iters = 200 # how many steps to warm up for
     lr_decay_iters = 6000 # should be ~= max_iters per Chinchilla
@@ -76,7 +81,8 @@ def main(args):
             }
         )
 
-    dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
+    # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
+    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=device, encoding=encoding)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -122,16 +128,17 @@ def main(args):
             param_group['lr'] = lr
 
         losses = []
-        for idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")):
+        pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")
+        for idx, (x, y) in enumerate(pbar):
             # evaluate the loss
             _, loss = model(x, y)
-            optimizer.zero_grad(set_to_none=True)
             losses.append(loss.item())
-            loss.backward()
-            optimizer.step()
 
-            # if with_lr_scheduler:
-            #     lr_scheduler.step()
+            loss.backward()
+
+            if (iter - start_epoch+1) % gradient_accumulation_interval == 0:
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
 
         print(f"Epoch: {iter} | Loss: {mean(losses)}")
 
@@ -180,14 +187,20 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=learning_rate)
     parser.add_argument('--eval_interval', type=int, default=eval_interval)
     parser.add_argument("--save_interval", type=int, default=save_interval)
+    parser.add_argument("--accumulate_interval", type=int, default=5)
     parser.add_argument("--path", type=str, default=MODEL_PATH)
-    parser.add_argument("--txt_file_path", type=str, default=TXT_FILE_PATH)
     parser.add_argument('--load_model', action='store_true')
     parser.add_argument("--model_size", type=str, default="large")
     parser.add_argument("--wandb", action="store_true")
     # parser.add_argument("--max_dataset_size", type=int, default=1000000)
     parser.add_argument("--with_lr_scheduler", action="store_true")
-    parser.add_argument("--encoding", type=str, default="utf-8")
+    # parser.add_argument("--encoding", type=str, default="utf-8")
+
+    parser.add_argument("--load_mode", type=str, default="xml")
+    parser.add_argument("--dataset_path", type=str)
+    parser.add_argument("--from_cache", action="store_true")
+    parser.add_argument("--save_cache", action="store_true")
+    parser.add_argument("--cache_directory", type=str)
 
     args = parser.parse_args()
 

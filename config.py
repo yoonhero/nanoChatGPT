@@ -12,7 +12,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Basic Configs
 MODEL_PATH="./tmp/checkpoints/" # for colab /content/drive/MyDrive/tmp/checkpoint/
-TXT_FILE_PATH="./dataset/" # for colab /content/drive/MyDrive/korean_murim_book.txt
+# TXT_FILE_PATH="./dataset/" # for colab /content/drive/MyDrive/korean_murim_book.txt
 
 # GPT config class
 @dataclass 
