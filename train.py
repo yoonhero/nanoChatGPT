@@ -197,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--encoding", type=str, default="utf-8")
 
     parser.add_argument("--load_mode", type=str, default="xml")
-    parser.add_argument("--dataset_path", type=str)
+    parser.add_argument("--dataset_path", type=str, default="")
     parser.add_argument("--from_cache", action="store_true")
     parser.add_argument("--save_cache", action="store_true")
     parser.add_argument("--cache_directory", type=str)
