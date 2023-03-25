@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.core.lightning import LightningModule
 from torchmetrics import functional as FM
 import matplotlib.pyplot as plt
 
