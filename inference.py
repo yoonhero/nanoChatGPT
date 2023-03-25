@@ -22,7 +22,7 @@ def main(args):
     start_tokens = args.start
     result = encode(start_tokens)
     config = utils.getConfig(args.model_size)
-    model, _, _ = utils.load_model(model_path, config)
+    model, _, _ = utils.load_model(model_path, config, best=False)
     model.eval()
 
     if start_tokens == "":
