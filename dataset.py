@@ -91,7 +91,7 @@ class TokenedDataset(Dataset):
             open_func = gzip.open if file_path.endswith(".gz") else open
 
             with open_func(cache_destination, "rb") as f:
-                self.tokens = np.load(f)
+                self.tokens = np.load(f, allow_pickle=True)
             self.num_subsets = self.tokens.shape[0]
             return
         
