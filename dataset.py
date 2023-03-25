@@ -88,10 +88,11 @@ class TokenedDataset(Dataset):
         self.block_size = block_size
 
         if from_cache:
-            open_func = gzip.open if file_path.endswith(".gz") else open
-
-            with open_func(cache_destination, "rb") as f:
-                self.tokens = np.load(f, allow_pickle=True)
+            # open_func = gzip.open if file_path.endswith(".gz") else open
+            # with open_func(cache_destination, "rb") as f:
+            #     self.tokens = np.load(f, allow_pickle=True)
+            f = gzip.GzipFile(cache_destination, "r")
+            self.tokens = np.load(f)
             self.num_subsets = self.tokens.shape[0]
             return
         
