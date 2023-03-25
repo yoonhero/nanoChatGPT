@@ -3,6 +3,9 @@ import pandas as pd
 import json
 import torch
 from torch.utils.data import Dataset
+import gzip
+import numpy as np
+from transformers import AutoTokenizer
 # from Korpora import Korpora
 
 from config import device
@@ -16,6 +19,65 @@ from config import device
 #         return self.length
 
 #     def __getitem__(self, idx):
+
+def encode_tokens_from_file(file_path, eos_token, tokenizer)
+
+class TokenedDataset(Dataset):
+    def __init__(
+            self, 
+            file_path:str, 
+            tokenizer:AutoTokenizer, 
+            block_size:int, 
+            encoding:str, 
+            from_cache:bool=False, 
+            line_by_line:bool=False, 
+            save_cache: bool=False, 
+            cache_destination: str = "dataset_cache.tar.gz",
+            device:str="cuda"
+        ):
+        self.line_by_line = line_by_line
+        self.device = device
+
+        if from_cache:
+            open_func = gzip.open if file_path.endswith(".gz") else open
+
+            with open_func(file_path, "rb") as f:
+                self.tokens = np.load(f)
+            self.num_subsets = self.tokens.shape[0] - block_size
+            self.block_size = block_size
+            self.line_by_line = line_by_line
+            return
+
+        self.tokens = encode_tokens_from_file(
+                file_path,
+                eos_token,
+                tokenizer,
+                text_delim,
+                header,
+                progress_bar_refresh_rate,
+        )
+
+
+
+        if save_cache:
+            self.save(cache_destination)
+
+    def save_cache(self, cache_destination):
+        with gzip.open(cache_destination, "wb") as f:
+            np.save(f, self.tokens)
+
+    def __len__(self):
+        return self.num_subsets
+
+    def __getitem__(self, idx):
+        return torch.as_tensor(
+            self.tokens[idx: (idx+self.block_size)].astype(np.int64, copy=False),
+            dtype=torch.long,
+            device=self.device
+        )
+
+    def __repr__(self) -> str: 
+        return f"TokenDataset containing {self.num_subsets} subsets."
 
 
 # Data Loading Optimization

@@ -9,20 +9,13 @@ import numpy as np
 from transformers import AutoTokenizer
 from tqdm import tqdm
 import math
+from pytorch_lightning import Trainer
 
-from model import GPTLanguageModel
+from model import GPTLanguageModel, GPT
 from utils import load_model, save_model,getConfig
 from dataset import GPTDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH, TXT_FILE_PATH, GPTConfig
 
-
-# enc = tiktoken.get_encoding("gpt2")
-# encode = lambda s: enc.encode(s)
-# decode = lambda l: enc.decode(l)
-# enc = Tokenizer()
-# encode = lambda s: enc.encode(s)
-# decode = lambda s: enc.decode(s)
-   
 def main(args):
     batch_size = args.batch_size
     max_iters = args.max_iters
