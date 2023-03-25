@@ -46,13 +46,29 @@ def read_text_from_xml(xml_dir:str):
 
 def encode_text_from_xml(folder_dir: str, tokenizer: AutoTokenizer, block_size:int):
     assert folder_dir[-1] != "/", "Check the directory please."
-    xml_file_directories = glob.glob(f"{folder_dir}/*")
+    xml_file_directories = glob.glob(f"{folder_dir}/*.xml")
 
     texts = [read_text_from_xml(xml_dir) for xml_dir in xml_file_directories]
     
     tokens = encode_from_texts(texts, tokenizer, block_size)
 
     return tokens
+
+def read_text_from_txt(txt_dir: str, encoding):
+    with open(txt_dir, "r", encoding=encoding) as f:
+        texts = f.read()
+    return texts
+
+def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: int, encoding):
+    assert folder_dir[-1] != "/", "Check the directory please."
+    txt_file_directories = glob.glob(f"{folder_dir}/*")
+
+    texts = [read_text_from_txt(txt_dir) for txt_dir in txt_file_directories]
+    
+    tokens = encode_from_texts(texts, tokenizer, block_size)
+
+    return tokens
+
 
 
 class TokenedDataset(Dataset):
@@ -83,9 +99,8 @@ class TokenedDataset(Dataset):
         assert load_mode in mode, "Please Select Appropriate Mode for Dataset Loading."
         if load_mode=="xml":
             self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size)
-        else:
-            # TODO: Make another modes
-            pass
+        elif load_mode=="txt":
+            self.tokens = encode_text_from_txt(file_path, tokenizer=tokenizer, block_size=block_size, encoding=encoding)
         self.num_subsets = self.tokens.shape[0]
 
         if save_cache:
@@ -139,65 +154,6 @@ class GPTDataset(Dataset):
         x, y = x.to(device), y.to(device)
         return x, y
     
-
-class ParagraphDataset(torch.utils.data.Dataset):
-    def __init__(self, filepath, tokenizer, block_size):
-        self.filepath = filepath
-        self.tokenizer = tokenizer
-        self.block_size = block_size
-        self.blocks = []
-        self._load_blocks()
-
-    def __len__(self):
-        return len(self.blocks)
-
-    def __getitem__(self, index):
-        block = self.blocks[index]
-        encoded_block = self.tokenizer.encode_plus(
-            block,
-            add_special_tokens=True,
-            max_length=self.block_size,
-            truncation=True,
-            padding='max_length',
-            return_attention_mask=True,
-            return_tensors='pt'
-        )
-        return encoded_block
-
-    def _load_blocks(self):
-        with open(self.filepath, 'r', encoding='utf-8') as f:
-            current_block = ""
-            for line in f:
-                line = line.strip()
-                if len(line) == 0:
-                    if len(current_block) > 0:
-                        blocks = self.tokenizer.batch_encode_plus(
-                            [current_block],
-                            add_special_tokens=True,
-                            max_length=self.block_size,
-                            truncation=True,
-                            padding='max_length',
-                            return_attention_mask=True,
-                            return_tensors='pt'
-                        )['input_ids']
-                        for i in range(blocks.size(1)):
-                            self.blocks.append(blocks[:, i:i+self.block_size])
-                        current_block = ""
-                else:
-                    current_block += line + " "
-            if len(current_block) > 0:
-                blocks = self.tokenizer.batch_encode_plus(
-                    [current_block],
-                    add_special_tokens=True,
-                    max_length=self.block_size,
-                    truncation=True,
-                    padding='max_length',
-                    return_attention_mask=True,
-                    return_tensors='pt'
-                )['input_ids']
-                for i in range(blocks.size(1)):
-                    self.blocks.append(blocks[:, i:i+self.block_size])
-
 
 
 def create_dataset():
