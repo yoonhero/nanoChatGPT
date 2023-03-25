@@ -194,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument("--wandb", action="store_true")
     # parser.add_argument("--max_dataset_size", type=int, default=1000000)
     parser.add_argument("--with_lr_scheduler", action="store_true")
-    # parser.add_argument("--encoding", type=str, default="utf-8")
+    parser.add_argument("--encoding", type=str, default="utf-8")
 
     parser.add_argument("--load_mode", type=str, default="xml")
     parser.add_argument("--dataset_path", type=str)
