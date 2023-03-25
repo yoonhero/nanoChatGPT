@@ -136,7 +136,7 @@ def main(args):
 
             loss.backward()
 
-            if (iter - start_epoch+1) % gradient_accumulation_interval == 0:
+            if (idx+1) % gradient_accumulation_interval == 0 or idx == len(train_loader):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 

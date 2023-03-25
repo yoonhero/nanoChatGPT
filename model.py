@@ -225,6 +225,11 @@ class GPTLanguageModel(nn.Module):
             probs = F.softmax(logits, dim=-1)
             # sample from the distribution
             idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+            
+            # after [BOS] token appear stop generating.
+            if idx_next == 0:
+                return idx
+            
             # append sample index to the running sequnce
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
