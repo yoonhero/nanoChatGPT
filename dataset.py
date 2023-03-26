@@ -14,6 +14,26 @@ import tqdm
 from config import device
 
 
+def merge_dataset(dataset_directories: list[str], result_dir:str):
+    datasets = glob.glob(f"{dataset_directories}/*.gz")
+    assert len(datasets) != 0, "Please check that the dataset file exists."
+    result = []
+
+    pbar = tqdm.tqdm(
+        datasets,
+        smoothing=0,
+        leave=True,
+        dynamic_ncols=True,
+    )
+    for dataset_dir in pbar:
+        f = gzip.GzipFile(dataset_dir, "r")
+        temp_tokens = np.load(f)
+        result = np.concatenate((temp_tokens, result), axis=0) if len(result) != 0 else temp_tokens 
+    
+    with gzip.open(result_dir, "wb") as f:
+        np.save(f, result)
+
+
 def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     tokens = []
     pbar = tqdm.tqdm(
@@ -70,7 +90,6 @@ def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: 
     tokens = encode_from_texts(texts, tokenizer, block_size)
 
     return tokens
-
 
 
 class TokenedDataset(Dataset):
