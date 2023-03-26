@@ -19,14 +19,14 @@ decode = lambda x: enc.decode(x)
 def main(args):
     model_path = args.path
     max_tokens = args.max_tokens
-    start_tokens = args.start
+    start_tokens = "[BOS]" + args.start
     result = encode(start_tokens)
     config = utils.getConfig(args.model_size)
     model, _, _ = utils.load_model(model_path, config, best=False)
     model.eval()
 
     if start_tokens == "":
-        result = input("")
+        result += input("")
         result = encode(result)
 
     # for i in range(max_tokens):

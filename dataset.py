@@ -14,7 +14,7 @@ import tqdm
 from config import device
 
 
-def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int):
+def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     tokens = []
     pbar = tqdm.tqdm(
         texts,
@@ -26,6 +26,8 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int)
         # print(text
         if text == "":
             continue
+
+        text = f"{BOS_TOKEN} {text} {EOS_TOKEN}" 
 
         temp_tokens = np.array(tokenizer.encode(text), dtype=np.int64)
         length = len(temp_tokens)
@@ -44,13 +46,13 @@ def read_text_from_xml(xml_dir:str):
         return text
     except: return ''
 
-def encode_text_from_xml(folder_dir: str, tokenizer: AutoTokenizer, block_size:int):
+def encode_text_from_xml(folder_dir: str, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     assert folder_dir[-1] != "/", "Check the directory please."
     xml_file_directories = glob.glob(f"{folder_dir}/*.xml")
 
     texts = [read_text_from_xml(xml_dir) for xml_dir in xml_file_directories]
     
-    tokens = encode_from_texts(texts, tokenizer, block_size)
+    tokens = encode_from_texts(texts, tokenizer, block_size, BOS_TOKEN, EOS_TOKEN)
 
     return tokens
 
@@ -77,6 +79,8 @@ class TokenedDataset(Dataset):
             file_path:str, 
             tokenizer:AutoTokenizer, 
             block_size:int, 
+            EOS_TOKEN:str,
+            BOS_TOKEN:str,
             load_mode: str="xml",
             from_cache:bool=False, 
             save_cache: bool=False, 
@@ -99,9 +103,9 @@ class TokenedDataset(Dataset):
         mode = ["xml", "txt", "csv"]
         assert load_mode in mode, "Please Select Appropriate Mode for Dataset Loading."
         if load_mode=="xml":
-            self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size)
+            self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
         elif load_mode=="txt":
-            self.tokens = encode_text_from_txt(file_path, tokenizer=tokenizer, block_size=block_size, encoding=encoding)
+            self.tokens = encode_text_from_txt(file_path, tokenizer=tokenizer, block_size=block_size, encoding=encoding, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
         self.num_subsets = self.tokens.shape[0]
 
         if save_cache:
@@ -182,7 +186,7 @@ if __name__ == '__main__':
     )
     # encode_text_from_xml("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128)
         
-    dataset = TokenedDataset("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128, save_cache=True)
+    dataset = TokenedDataset("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128, save_cache=True, BOS_TOKEN="[BOS]", EOS_TOKEN="[EOS]")
     print(dataset[0])
             
         

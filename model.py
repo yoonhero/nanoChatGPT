@@ -5,6 +5,15 @@ import math
 from torchmetrics import functional as FM
 import matplotlib.pyplot as plt
 
+
+def human_format(num):
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    num = int(num * 10) / 10
+    return f"{f'{num:f}'.rstrip('0').rstrip('.')}{['', 'k', 'M', 'B', 'T'][magnitude]}"
+
 class Head(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -174,8 +183,9 @@ class GPTLanguageModel(nn.Module):
 
     def get_num_params(self):
         n_params = [p.nelement() for p in self.parameters()]
-        return sum(n_params)
-    
+        num = sum(n_params)
+        return human_format(num)
+
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
@@ -235,3 +245,5 @@ class GPTLanguageModel(nn.Module):
         return idx
 
 
+if __name__ == "__main__":
+    print(human_format(60000000))

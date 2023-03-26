@@ -13,7 +13,7 @@ import math
 from model import GPTLanguageModel
 from utils import load_model, save_model,getConfig
 from dataset import GPTDataset, TokenedDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH,  GPTConfig
+from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH
 
 def main(args):
     batch_size = args.batch_size
@@ -55,10 +55,12 @@ def main(args):
         
 
     # KoGPT Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-    'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
-    bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
-    )
+    BOS_TOKEN = "[BOS]"
+    EOS_TOKEN = "[EOS]"
+    UNK_TOKEN = "[UNK]"
+    PAD_TOKEN = "[PAD]"
+    MASK_TOKEN = "[MASK]"
+    tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
 
     config = getConfig(args.model_size)
 
@@ -82,7 +84,7 @@ def main(args):
         )
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
-    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=device, encoding=encoding)
+    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=device, encoding=encoding)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -140,11 +142,11 @@ def main(args):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 
-        print(f"Epoch: {iter} | Loss: {mean(losses)}")
+        print(f"Epoch: {iter+1} | Loss: {mean(losses)}")
 
         if (iter-start_epoch) % eval_interval == 0:
             losses = estimate_loss(model=model)
-            print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+            print(f"step {iter+1}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
             if is_wandb:
                 wandb.log({
