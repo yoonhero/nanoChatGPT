@@ -114,9 +114,10 @@ class FeedForward(nn.Module):
         self.dropout = config.dropout
         self.net = nn.Sequential(
             nn.Linear(self.n_embd, 4*self.n_embd, bias=False),
-            nn.ReLU(),
+            # nn.ReLU(),
             # SwiGLU for better result => LLAMA
             # nn.SiLU(),
+            nn.GELU(),
             nn.Linear(4*self.n_embd, self.n_embd, bias=False),
             nn.Dropout(self.dropout)
         )

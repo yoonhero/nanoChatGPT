@@ -23,7 +23,7 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int,
         dynamic_ncols=True,
     )
     for text in pbar:
-        # print(text
+        # print(text)
         if text == "":
             continue
 
@@ -31,8 +31,8 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int,
 
         temp_tokens = np.array(tokenizer.encode(text), dtype=np.int64)
         length = len(temp_tokens)
-        padding = -length % (block_size+1) 
-        temp_tokens = np.reshape(np.concatenate((temp_tokens, np.zeros(padding))), (-1, block_size+1))
+        padding = -length % (block_size+1)
+        temp_tokens = np.reshape(np.concatenate((temp_tokens, np.ones(padding)*tokenizer.encode("[PAD]"))), (-1, block_size+1))
         # print(temp_tokens.shape)
         tokens = np.concatenate((tokens, temp_tokens), axis=0) if len(tokens) != 0 else temp_tokens
 
@@ -48,7 +48,7 @@ def read_text_from_xml(xml_dir:str):
 
 def encode_text_from_xml(folder_dir: str, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     assert folder_dir[-1] != "/", "Check the directory please."
-    xml_file_directories = glob.glob(f"{folder_dir}/*.xml")
+    xml_file_directories = glob.glob(f"{folder_dir}/*")
 
     texts = [read_text_from_xml(xml_dir) for xml_dir in xml_file_directories]
     
@@ -104,9 +104,11 @@ class TokenedDataset(Dataset):
         assert load_mode in mode, "Please Select Appropriate Mode for Dataset Loading."
         if load_mode=="xml":
             self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
+            # print(self.tokens)
+            self.num_subsets = self.tokens.shape[0]
         elif load_mode=="txt":
             self.tokens = encode_text_from_txt(file_path, tokenizer=tokenizer, block_size=block_size, encoding=encoding, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
-        self.num_subsets = self.tokens.shape[0]
+            self.num_subsets = self.tokens.shape[0]
 
         if save_cache:
             self.save_cache(cache_destination)
@@ -188,5 +190,6 @@ if __name__ == '__main__':
         
     dataset = TokenedDataset("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128, save_cache=True, BOS_TOKEN="[BOS]", EOS_TOKEN="[EOS]")
     print(dataset[0])
+    print(dataset[10])
             
         
