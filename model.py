@@ -244,6 +244,9 @@ class GPTLanguageModel(nn.Module):
             # append sample index to the running sequnce
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
+    
+    def __repr__(self):
+        return f"GPT with {self.get_num_params()} paramters."
 
 
 if __name__ == "__main__":
