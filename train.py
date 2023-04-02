@@ -15,6 +15,7 @@ from utils import load_model, save_model,getConfig
 from dataset import GPTDataset, TokenedDataset
 from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH
 
+
 def main(args):
     batch_size = args.batch_size
     max_iters = args.max_iters
@@ -123,6 +124,12 @@ def main(args):
 
     # lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
 
+    # Train Dataset Optimization with mask the random value of the tensor
+    def mask_tensor_random_pos(x):
+        mask = torch.randn_like(x)>5e-3
+        masked_x = torch.where(mask, torch.tensor(0.), x)
+        return masked_x
+    
     for iter in range(start_epoch, start_epoch+max_iters):
         # every once in a while evaluate the loss on train and val sets
         lr = get_lr(iter) if with_lr_scheduler else learning_rate 
@@ -133,7 +140,8 @@ def main(args):
         pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")
         for idx, (x, y) in enumerate(pbar):
             # evaluate the loss
-            _, loss = model(x, y)
+            masked_x = mask_tensor_random_pos(x)
+            _, loss = model(masked_x, y)
             losses.append(loss.item())
 
             loss.backward()
