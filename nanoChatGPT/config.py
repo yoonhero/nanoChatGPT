@@ -1,6 +1,6 @@
 import torch
 from dataclasses import dataclass
-from model import GPTLanguageModel
+from nanoChatGPT import GPTLanguageModel
 
 # Hyper Parameters
 batch_size = 64 # how many independent sequences will we process in parallel?

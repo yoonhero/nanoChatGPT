@@ -3,8 +3,8 @@ import torch
 import argparse
 from transformers import AutoTokenizer
 
-import utils
-from config import MODEL_PATH, device
+import nanoChatGPT.utils as utils
+from nanoChatGPT import MODEL_PATH, device
 
 
 # KoGPT Tokenizer

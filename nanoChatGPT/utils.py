@@ -1,7 +1,7 @@
 import glob 
 import torch
-from model import GPTLanguageModel
-from config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG
+from nanoChatGPT.model import GPTLanguageModel
+from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG
 
 def save_model(epoch, model, optimizer, PATH):
     model_state_dict = {

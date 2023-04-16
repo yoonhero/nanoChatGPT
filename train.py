@@ -10,10 +10,8 @@ from transformers import AutoTokenizer
 import tqdm
 import math
 
-from model import GPTLanguageModel
-from utils import load_model, save_model,getConfig
+from nanoChatGPT import GPTLanguageModel, load_model, save_model, getConfig, batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH
 from dataset import GPTDataset, TokenedDataset
-from config import batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH
 
 
 def main(args):

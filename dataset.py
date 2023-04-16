@@ -10,9 +10,7 @@ from xml.etree.ElementTree import parse
 from sys import getsizeof
 import numpy as np
 import tqdm
-
-from config import device
-
+from nanoChatGPT import device
 
 def merge_dataset(dataset_directories: list[str], result_dir:str):
     datasets = glob.glob(f"{dataset_directories}/*.gz")

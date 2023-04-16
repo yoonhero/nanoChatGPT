@@ -1,4 +1,6 @@
-# R&E #2 2023 - Make ChatGPT
+# nanoChatGPT
+
+Built a sLLM based on GPT and inspired by LLAMA. 
 
 ## TODOS
 
