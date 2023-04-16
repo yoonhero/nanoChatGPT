@@ -2,7 +2,7 @@ import torch
 
 from nanoChatGPT.model import GPTLanguageModel
 from nanoChatGPT.config import LARGE_GPT_CONFIG
-from nanoChatGPT.utils import load_model
+from utils import load_model
 
 model, _, _ = load_model("./tmp/checkpoints/epoch-80.tar", LARGE_GPT_CONFIG, best=False)
 # model = GPTLanguageModel(LARGE_GPT_CONFIG)

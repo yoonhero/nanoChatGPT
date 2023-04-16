@@ -1,7 +1,7 @@
 import glob 
 import torch
 from nanoChatGPT.model import GPTLanguageModel
-from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG
+from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
 
 def save_model(epoch, model, optimizer, PATH):
     model_state_dict = {
@@ -40,7 +40,7 @@ def load_model(PATH, config, best=True):
 
 
 def getConfig(model_size):
-    configs = {"small":SMALL_GPT_CONFIG, "large":LARGE_GPT_CONFIG, "KOGPT":KOGPT_CONFIG}
+    configs = {"small":SMALL_GPT_CONFIG, "large":LARGE_GPT_CONFIG, "KOGPT":KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG}
     assert model_size in configs.keys(), "Please Choose Appropriate Model Size"
     config = configs[model_size]
 

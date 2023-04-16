@@ -44,7 +44,8 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int,
         # print(text)
         if text == "":
             continue
-
+        
+        # text = text.replace("\n", f"{SEP_TOKEN}")
         text = f"{BOS_TOKEN} {text} {EOS_TOKEN}" 
 
         temp_tokens = np.array(tokenizer.encode(text), dtype=np.int64)
@@ -178,9 +179,7 @@ class GPTDataset(Dataset):
         x, y = x.to(device), y.to(device)
         return x, y
     
-
-
-def create_dataset():
+def old_create_dataset():
     files = glob.glob("./dataset/NIKLNEWSPAPER_2022_v1.0/*.json")
     result = ''
     for raw_data_path in files:

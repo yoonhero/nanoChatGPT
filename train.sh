@@ -1,0 +1,1 @@
+python train.py --from_cache --load_model --cache_directory=/content/drive/MyDrive/dataset_cache.tar.gz --batch_size=64 --max_iters=100 --save_interval=5 --eval_interval=10 --accumulate_interval=16 --path=/content/drive/MyDrive/tmp/4-16-checkpoints/

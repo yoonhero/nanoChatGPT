@@ -1,17 +1,17 @@
 import torch
 import torch.optim as optim
-import tiktoken
 import argparse
 from torch.utils.data import random_split, DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 import os
-import numpy as np
 from transformers import AutoTokenizer
 import tqdm
 import math
 
-from nanoChatGPT import GPTLanguageModel, load_model, save_model, getConfig, batch_size, max_iters, eval_interval, save_interval, learning_rate, device, MODEL_PATH
-from dataset import GPTDataset, TokenedDataset
+from nanoChatGPT import GPTLanguageModel
+import utils 
+import nanoChatGPT.config as config
+from dataset import TokenedDataset
 
 
 def main(args):
@@ -24,7 +24,6 @@ def main(args):
     PATH = args.path
     load = args.load_model
     is_wandb = args.wandb
-    # max_dataset_size = args.max_dataset_size
     with_lr_scheduler = args.with_lr_scheduler
     encoding = args.encoding
 
@@ -50,9 +49,7 @@ def main(args):
         assert 0 <= decay_ratio <= 1
         coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
         return min_lr + coeff * (learning_rate - min_lr)
-
-        
-
+    
     # KoGPT Tokenizer
     BOS_TOKEN = "[BOS]"
     EOS_TOKEN = "[EOS]"
@@ -61,29 +58,29 @@ def main(args):
     MASK_TOKEN = "[MASK]"
     tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
 
-    config = getConfig(args.model_size)
+    config = utils.getConfig(args.model_size)
 
     if is_wandb:
         import wandb
         wandb.init(
             # set the wandb project where this run will be logged
-            project="small-chatgpt",
+            project="nanoChatGPT",
             
             # track hyperparameters and run metadata
             config={
-            "architecture": "GPT",
-            "dataset": "Custom Corpus Dataset",
-            "epochs": max_iters,
-            "block_size": config.block_size,
-            "d_model": config.n_embd,
-            "n_heads": config.n_heads,
-            "n_layer": config.n_layer,
-            "vocab": config.vocab_size
+                "architecture": "GPT",
+                "dataset": "Custom Corpus Dataset",
+                "epochs": max_iters,
+                "block_size": config.block_size,
+                "d_model": config.n_embd,
+                "n_heads": config.n_heads,
+                "n_layer": config.n_layer,
+                "vocab": config.vocab_size
             }
         )
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
-    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=device, encoding=encoding)
+    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=config.device, encoding=encoding)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -92,7 +89,6 @@ def main(args):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
 
     mean = lambda li: sum(li)/len(li)
-
     @torch.no_grad()
     def estimate_loss(model):
         out = {}
@@ -103,24 +99,20 @@ def main(args):
                 d = train_loader
             elif split == "val":
                 d = val_loader
-            
             for X, Y in d:
                 _, loss = model(X, Y)
                 losses.append(loss.item())
-
             out[split] = mean(losses)
         model.train()
         return out
 
     if load:
-        model, optimizer, start_epoch = load_model(PATH, config)
+        model, optimizer, start_epoch = utils.load_model(PATH, config)
     else: 
         os.makedirs(PATH, exist_ok=True)
-        model = GPTLanguageModel(config).to(device)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.9)
+        model = GPTLanguageModel(config).to(config.device)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.9), weight_decay=0.2)
         start_epoch = 0
-
-    # lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=max_iters//4, max_iters=max_iters)
 
     # Train Dataset Optimization with mask the random value of the tensor
     def mask_tensor_random_pos(x):
@@ -154,13 +146,6 @@ def main(args):
             losses = estimate_loss(model=model)
             print(f"step {iter+1}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
-            if is_wandb:
-                wandb.log({
-                    "iter": iter,
-                    "train/loss": losses['train'],
-                    "val/loss": losses['val'],
-                    "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
-                })
         elif is_wandb:
             wandb.log({
                 "iter": iter,
@@ -170,8 +155,7 @@ def main(args):
 
         # Save the every save interval
         if (iter-start_epoch+1) % save_interval == 0:
-            save_model(iter+1, model, optimizer, PATH)
-
+            utils.save_model(iter+1, model, optimizer, PATH)
 
     # finish wandb
     if is_wandb:
@@ -179,31 +163,28 @@ def main(args):
 
     # generate samples
     decode = lambda x: tokenizer.decode(x)
-    context = torch.zeros((1, 1), dtype=torch.long, device=device)
+    context = torch.zeros((1, 1), dtype=torch.long, device=config.device)
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
     with open('result.txt', "w") as f:
         f.writelines(result)
         f.close()
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
 
-    parser.add_argument('--batch_size', type=int, default=batch_size)
-    parser.add_argument('--max_iters', type=int, default=max_iters)
-    parser.add_argument('--learning_rate', type=float, default=learning_rate)
-    parser.add_argument('--eval_interval', type=int, default=eval_interval)
-    parser.add_argument("--save_interval", type=int, default=save_interval)
+    parser.add_argument('--batch_size', type=int, default=config.batch_size)
+    parser.add_argument('--max_iters', type=int, default=config.max_iters)
+    parser.add_argument('--learning_rate', type=float, default=config.learning_rate)
+    parser.add_argument('--eval_interval', type=int, default=config.eval_interval)
+    parser.add_argument("--save_interval", type=int, default=config.save_interval)
     parser.add_argument("--accumulate_interval", type=int, default=5)
-    parser.add_argument("--path", type=str, default=MODEL_PATH)
+    parser.add_argument("--path", type=str, default=config.MODEL_PATH)
     parser.add_argument('--load_model', action='store_true')
     parser.add_argument("--model_size", type=str, default="large")
     parser.add_argument("--wandb", action="store_true")
-    # parser.add_argument("--max_dataset_size", type=int, default=1000000)
     parser.add_argument("--with_lr_scheduler", action="store_true")
     parser.add_argument("--encoding", type=str, default="utf-8")
-
     parser.add_argument("--load_mode", type=str, default="xml")
     parser.add_argument("--dataset_path", type=str, default="")
     parser.add_argument("--from_cache", action="store_true")

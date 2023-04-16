@@ -75,14 +75,16 @@ class CasualAttention(nn.Module):
         self.n_heads = config.n_heads
         assert self.n_embd % self.n_heads == 0, "Please Check Embedding and Heads Number Config."
         self.head_size = self.n_embd//self.n_heads
-        self.dropout = config.dropout
+
+        self.dropout = config.dropout 
         self.block_size = config.block_size
 
         self.c_attn = nn.Linear(self.n_embd, self.n_embd*3, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
 
-        self.attn_dropout = nn.Dropout(self.dropout)
-        self.resid_drop = nn.Dropout(self.dropout)
+        if self.dropout:
+            self.attn_dropout = nn.Dropout(self.dropout)
+            self.resid_drop = nn.Dropout(self.dropout)
 
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                                         .view(1, 1, config.block_size, config.block_size))
@@ -96,34 +98,63 @@ class CasualAttention(nn.Module):
         k = k.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
         v = v.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
         q = q.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
-        
-        att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1))) # (B, N_HEADS, T, T)
-        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf')) 
-        att = F.softmax(att, dim=-1)
-        att = self.attn_dropout(att)
-        y = att @ v # (B, nh, T, hs)
-        y = y.transpose(1, 2).contiguous().view(B, T, C) # (B, T, C)
 
-        y = self.resid_drop(self.c_proj(y))
+        # TODO: rope cache      
+        ###### ---------------------------------------------
+
+        # for efficient using pytroch functional package is useful. 
+        try: 
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
+        except: 
+            att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1))) # (B, N_HEADS, T, T)
+            att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf')) 
+            att = F.softmax(att, dim=-1)
+            att = self.attn_dropout(att) if self.dropout else att
+            y = att @ v # (B, nh, T, hs)
+
+        y = y.transpose(1, 2).contiguous().view(B, T, C) # (B, T, C)
+        
+        y = self.resid_drop(self.c_proj(y)) if self.dropout else self.c_proj(y)
+
         return y
+
 
 class FeedForward(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.n_embd = config.n_embd
-        self.dropout = config.dropout
-        self.net = nn.Sequential(
-            nn.Linear(self.n_embd, 4*self.n_embd, bias=False),
-            # nn.ReLU(),
-            # SwiGLU for better result => LLAMA
-            # nn.SiLU(),
-            nn.GELU(),
-            nn.Linear(4*self.n_embd, self.n_embd, bias=False),
-            nn.Dropout(self.dropout)
-        )
+        hidden_dim = 4*config.n_embd
+        n_hidden = int(2 * hidden_dim / 3)
+
+        N = 256
+        n_hidden = ((n_hidden - 1) // N) * N + N
+
+        # self.net = nn.Sequential(
+        #     nn.Linear(self.n_embd, 4*self.n_embd, bias=False),
+        #     nn.GELU(),
+        #     nn.Linear(4*self.n_embd, self.n_embd, bias=False),
+        #     nn.Dropout(self.dropout)
+        # )
+
+        self.c_fc1 = nn.Linear(config.n_embd, n_hidden, bias=False)
+        self.c_fc2 = nn.Linear(config.n_embd, n_hidden, bias=False)
+        self.c_proj = nn.Linear(n_hidden, config.n_embd, bias=False)
         
     def forward(self, x):
-        return self.net(x)
+        x = F.silu(self.c_fc1(x)) * self.c_fc2(x)
+        x = self.c_proj(x)
+        return x
+
+class RMSNorm(nn.Module):
+    def __init__(self, size: int, dim: int = -1, eps: float = 1e-5) -> None:
+        super().__init__()
+        self.scale = nn.Parameter(torch.ones(size))
+        self.eps = eps
+        self.dim = dim
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        norm_x = torch.mean(x * x, dim=self.dim, keepdims=True)
+        x_normed = x * torch.sqrt(norm_x + self.eps)
+        return self.scale * x_normed
 
 
 class Block(nn.Module):
@@ -141,19 +172,21 @@ class Block(nn.Module):
         # self.sa = MultiHeadAttention(config)
         self.sa = CasualAttention(config)
         self.ffwd = FeedForward(config)
-        self.ln1 = nn.LayerNorm(self.n_embd)
-        self.ln2 = nn.LayerNorm(self.n_embd)
+        # self.ln1 = nn.LayerNorm(self.n_embd)
+        # self.ln2 = nn.LayerNorm(self.n_embd)
+        self.rms_1 = RMSNorm(self.n_embd)
+        self.rms_2 = RMSNorm(self.n_embd)
     
     def forward(self, x):
         B, T, C = x.shape
         # pos_emb = self.positional_embedding_table(torch.arange(T, device=device))
-        x = x+self.sa(self.ln1(x))
+        x = x+self.sa(self.rms_1(x))
         # x = x+pos_emb
-        x = x+self.ffwd(self.ln2(x))
+        x = x+self.ffwd(self.rms_2(x))
         return x
 
 class GPTLanguageModel(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         super().__init__()
         self.n_embd = config.n_embd
         self.n_heads = config.n_heads
@@ -162,38 +195,37 @@ class GPTLanguageModel(nn.Module):
         self.vocab_size = config.vocab_size
         self.block_size = config.block_size
 
-        # each toekn directly reads off the logits for the next token from a lookup table
+        # each token directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
         self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
         # self.sa_heads = MultiHeadAttention(config)
-        self.dropout = nn.Dropout(self.dropout)
+        # self.dropout = nn.Dropout(self.dropout)
         # feed forward layer is needed for think about the self attention score 
         # when we pass the self attention score straight forward to the last layer 
         # it's hard to think about the meaning of the score
         self.blocks = nn.Sequential(*[Block(config) for _ in range(self.n_layer)])
-        self.ln_f = nn.LayerNorm(self.n_embd)
-        self.lm_head = nn.Linear(self.n_embd, self.vocab_size)
+        # self.ln_f = nn.LayerNorm(self.n_embd)
+        self.ln_f = RMSNorm(self.n_embd)
+        self.lm_head = nn.Linear(self.n_embd, self.vocab_size, bias=False)
 
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+        # for pn, p in self.named_parameters():
+            # if pn.endswith('c_proj.weight'):
+                # torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
 
-        print(f"Number of parameters: {self.get_num_params()}")
+        print(f"Number of parameters: {human_format(self.get_num_params())}")
 
     def get_num_params(self):
         n_params = [p.nelement() for p in self.parameters()]
         num = sum(n_params)
-        return human_format(num)
+        return num
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02 / math.sqrt(2 * self.n_layer))
         elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02 / math.sqrt(2 * self.n_layer))
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -204,7 +236,7 @@ class GPTLanguageModel(nn.Module):
         token_emb = self.token_embedding_table(idx) # (B, T, C)
         pos_emb = self.positional_embedding_table(torch.arange(T, device="cuda" if torch.cuda.is_available() else "cpu")) # (T, C)
         x = token_emb + pos_emb
-        x = self.dropout(x)
+        # x = self.dropout(x)
         # x = self.sa_heads(x)
         x = self.blocks(x)
         x = self.ln_f(x)

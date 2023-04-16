@@ -3,7 +3,7 @@ import torch
 import argparse
 from transformers import AutoTokenizer
 
-import nanoChatGPT.utils as utils
+import utils as utils
 from nanoChatGPT import MODEL_PATH, device
 
 
