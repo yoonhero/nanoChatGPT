@@ -7,48 +7,56 @@ import os
 from transformers import AutoTokenizer
 import tqdm
 import math
+import numpy as np
+import time
 
 from nanoChatGPT import GPTLanguageModel
 import utils 
-import nanoChatGPT.config as config
+import nanoChatGPT.config as CONFIG
 from dataset import TokenedDataset
+
+
+# Train Dataset Optimization with mask the random value of the tensor
+def mask_tensor_random_pos(x):
+    mask = torch.randn_like(x)>5e-3
+    masked_x = torch.where(mask, torch.tensor(0.), x)
+    return masked_x
+
+warmup_iters = 200 # how many steps to warm up for
+lr_decay_iters = 6000 
+min_lr = 6e-5
+# learning rate decay scheduler (cosine with warmup)
+def get_lr(it: int, learning_rate: float) -> float:
+    # 1) linear warmup for warmup_iters steps
+    if it < warmup_iters:
+        return learning_rate * it / warmup_iters
+    # 2) if it > lr_decay_iters, return min learning rate
+    if it > lr_decay_iters:
+        return min_lr
+    # 3) in between, use cosine decay down to min learning rate
+    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    assert 0 <= decay_ratio <= 1
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
+    return min_lr + coeff * (learning_rate - min_lr)
 
 
 def main(args):
     batch_size = args.batch_size
-    max_iters = args.max_iters
+    max_epoch = args.max_epochs
     learning_rate = args.learning_rate
     eval_interval = args.eval_interval
     save_interval = args.save_interval
-    gradient_accumulation_interval = args.accumulate_interval
-    PATH = args.path
+    gradient_accumulation_interval = args.gradient_accumulation_interval
+    output_dir = args.output_dir
     load = args.load_model
     is_wandb = args.wandb
     with_lr_scheduler = args.with_lr_scheduler
     encoding = args.encoding
-
     load_mode = args.load_mode
     dataset_path = args.dataset_path
     from_cache = args.from_cache
     save_cache = args.save_cache
     cache_directory = args.cache_directory
-
-    warmup_iters = 200 # how many steps to warm up for
-    lr_decay_iters = 6000 # should be ~= max_iters per Chinchilla
-    min_lr = 6e-5
-    # learning rate decay scheduler (cosine with warmup)
-    def get_lr(it):
-        # 1) linear warmup for warmup_iters steps
-        if it < warmup_iters:
-            return learning_rate * it / warmup_iters
-        # 2) if it > lr_decay_iters, return min learning rate
-        if it > lr_decay_iters:
-            return min_lr
-        # 3) in between, use cosine decay down to min learning rate
-        decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
-        assert 0 <= decay_ratio <= 1
-        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
-        return min_lr + coeff * (learning_rate - min_lr)
     
     # KoGPT Tokenizer
     BOS_TOKEN = "[BOS]"
@@ -56,9 +64,10 @@ def main(args):
     UNK_TOKEN = "[UNK]"
     PAD_TOKEN = "[PAD]"
     MASK_TOKEN = "[MASK]"
+
     tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
 
-    config = utils.getConfig(args.model_size)
+    config = utils.getModelConfig(args.model_size)
 
     if is_wandb:
         import wandb
@@ -70,7 +79,7 @@ def main(args):
             config={
                 "architecture": "GPT",
                 "dataset": "Custom Corpus Dataset",
-                "epochs": max_iters,
+                "epochs": max_epoch,
                 "block_size": config.block_size,
                 "d_model": config.n_embd,
                 "n_heads": config.n_heads,
@@ -80,7 +89,7 @@ def main(args):
         )
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
-    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=config.device, encoding=encoding)
+    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -88,100 +97,109 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
 
-    mean = lambda li: sum(li)/len(li)
-    @torch.no_grad()
-    def estimate_loss(model):
-        out = {}
-        model.eval()
-        for split in ["train", "val"]:
-            losses = []
-            if split == "train":
-                d = train_loader
-            elif split == "val":
-                d = val_loader
-            for X, Y in d:
-                _, loss = model(X, Y)
-                losses.append(loss.item())
-            out[split] = mean(losses)
-        model.train()
-        return out
-
     if load:
-        model, optimizer, start_epoch = utils.load_model(PATH, config)
+        model, optimizer, start_epoch = utils.load_model(output_dir, config)
     else: 
-        os.makedirs(PATH, exist_ok=True)
-        model = GPTLanguageModel(config).to(config.device)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.9), weight_decay=0.2)
+        os.makedirs(output_dir, exist_ok=True)
+        model = GPTLanguageModel(config).to(CONFIG.device)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.1)
         start_epoch = 0
 
-    # Train Dataset Optimization with mask the random value of the tensor
-    def mask_tensor_random_pos(x):
-        mask = torch.randn_like(x)>5e-3
-        masked_x = torch.where(mask, torch.tensor(0.), x)
-        return masked_x
+    train(
+        model=model,
+        optimizer=optimizer, 
+        train_loader=train_loader, 
+        val_loader=val_loader, 
+        output_dir=output_dir, 
+        start_epoch=start_epoch, 
+        max_epoch=max_epoch, 
+        gradient_accumulation_interval=gradient_accumulation_interval, 
+        eval_interval=eval_interval, 
+        save_interval=save_interval, 
+        learning_rate=learning_rate, 
+        with_lr_scheduler=with_lr_scheduler, 
+        is_wandb=is_wandb
+    )    
     
-    for iter in range(start_epoch, start_epoch+max_iters):
+    sample(tokenizer, model)
+
+def train(model: torch.nn.Module, optimizer: torch.nn.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+    losses = np.zeros(max_epoch)
+    for iter in range(start_epoch, start_epoch+max_epoch):
+        t0 = time.time()
+
         # every once in a while evaluate the loss on train and val sets
         lr = get_lr(iter) if with_lr_scheduler else learning_rate 
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
-        losses = []
-        pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_iters+start_epoch}")
+        # Logging the losses.
+        _losses = []
+
+        pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch+start_epoch}")
         for idx, (x, y) in enumerate(pbar):
             # evaluate the loss
             masked_x = mask_tensor_random_pos(x)
             _, loss = model(masked_x, y)
-            losses.append(loss.item())
+            _losses.append(loss.item())
 
             loss.backward()
 
-            if (idx+1) % gradient_accumulation_interval == 0 or idx == len(train_loader):
+            if (idx+1) % gradient_accumulation_interval == 0 or (idx+1) == len(train_loader):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 
-        print(f"Epoch: {iter+1} | Loss: {mean(losses)}")
+        dt = time.time() - t0
+        mean_loss = utils.mean(_losses)
+        losses[iter] = mean_loss
+        print(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
 
         if (iter-start_epoch) % eval_interval == 0:
-            losses = estimate_loss(model=model)
-            print(f"step {iter+1}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+            estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
+            print(f"step {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
 
         elif is_wandb:
+            import wandb
             wandb.log({
                 "iter": iter,
-                "train/loss": mean(losses),
+                "train/loss": mean_loss,
                 "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
             })
 
         # Save the every save interval
         if (iter-start_epoch+1) % save_interval == 0:
-            utils.save_model(iter+1, model, optimizer, PATH)
+            utils.save_model(iter+1, model, optimizer, output_dir)
 
     # finish wandb
     if is_wandb:
+        import wandb
         wandb.finish()
+    
+    return losses
 
+def sample(tokenizer, model: torch.nn.Module) -> None:
     # generate samples
     decode = lambda x: tokenizer.decode(x)
-    context = torch.zeros((1, 1), dtype=torch.long, device=config.device)
+    context = torch.zeros((1, 1), dtype=torch.long, device=CONFIG.device)
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
     with open('result.txt', "w") as f:
         f.writelines(result)
         f.close()
+        
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
 
-    parser.add_argument('--batch_size', type=int, default=config.batch_size)
-    parser.add_argument('--max_iters', type=int, default=config.max_iters)
-    parser.add_argument('--learning_rate', type=float, default=config.learning_rate)
-    parser.add_argument('--eval_interval', type=int, default=config.eval_interval)
-    parser.add_argument("--save_interval", type=int, default=config.save_interval)
-    parser.add_argument("--accumulate_interval", type=int, default=5)
-    parser.add_argument("--path", type=str, default=config.MODEL_PATH)
+    parser.add_argument('--batch_size', type=int, default=CONFIG.batch_size)
+    parser.add_argument('--max_epoch', type=int, default=CONFIG.max_epoch)
+    parser.add_argument('--learning_rate', type=float, default=CONFIG.learning_rate)
+    parser.add_argument('--eval_interval', type=int, default=CONFIG.eval_interval)
+    parser.add_argument("--save_interval", type=int, default=CONFIG.save_interval)
+    parser.add_argument("--gradient_accumulation_interval", type=int, default=5)
+    parser.add_argument("--output_dir", type=str, default=CONFIG.TRAINING_OUTPUT_DIR)
     parser.add_argument('--load_model', action='store_true')
-    parser.add_argument("--model_size", type=str, default="large")
+    parser.add_argument("--model_size", type=str, default="LLAMA")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--with_lr_scheduler", action="store_true")
     parser.add_argument("--encoding", type=str, default="utf-8")

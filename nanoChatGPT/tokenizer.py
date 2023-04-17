@@ -46,3 +46,7 @@ class Tokenizer:
     def train(input: str, destination: str, vocab_size=32000) -> None:
         model_prefix = os.path.join(destination, "tokenizer")
         SentencePieceTrainer.Train(input=input, model_prefix=model_prefix, vocab_size=vocab_size)
+        
+
+# if __name__ == "__main__":  
+#     tokenizer = Tokenizer()

@@ -90,7 +90,6 @@ def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: 
 
     return tokens
 
-
 class TokenedDataset(Dataset):
     def __init__(
             self, 
