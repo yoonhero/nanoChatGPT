@@ -123,7 +123,7 @@ def main(args):
     
     sample(tokenizer, model)
 
-def train(model: torch.nn.Module, optimizer: torch.nn.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
     losses = np.zeros(max_epoch)
     for iter in range(start_epoch, start_epoch+max_epoch):
         t0 = time.time()
@@ -186,7 +186,7 @@ def sample(tokenizer, model: torch.nn.Module) -> None:
     with open('result.txt', "w") as f:
         f.writelines(result)
         f.close()
-        
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
