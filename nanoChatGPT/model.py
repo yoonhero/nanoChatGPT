@@ -144,22 +144,22 @@ class FeedForward(nn.Module):
         x = self.c_proj(x)
         return x
 
-class RMSNorm(nn.Module):
-    def __init__(self, size: int, dim: int = -1, eps: float = 1e-5) -> None:
+class RMSNorm(torch.nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
-        self.scale = nn.Parameter(torch.ones(size))
         self.eps = eps
-        self.dim = dim
+        self.weight = nn.Parameter(torch.ones(dim))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        norm_x = torch.mean(x * x, dim=self.dim, keepdims=True)
-        x_normed = x * torch.sqrt(norm_x + self.eps)
-        return self.scale * x_normed
+    def _norm(self, x):
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
+
+    def forward(self, x):
+        output = self._norm(x.float()).type_as(x)
+        return output * self.weight
 
 
 class Block(nn.Module):
     """Transformer block: communication followd by computation"""
-
     def __init__(self, config):
         # n_embd: embedding dimension, n_heads: the number of the heads 
         super().__init__()
@@ -168,45 +168,42 @@ class Block(nn.Module):
         self.block_size = config.block_size
         self.head_size = self.n_embd // self.n_heads
 
-        # self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
-        # self.sa = MultiHeadAttention(config)
-        self.sa = CasualAttention(config)
-        self.ffwd = FeedForward(config)
-        # self.ln1 = nn.LayerNorm(self.n_embd)
-        # self.ln2 = nn.LayerNorm(self.n_embd)
         self.rms_1 = RMSNorm(self.n_embd)
+        self.sa = CasualAttention(config)
         self.rms_2 = RMSNorm(self.n_embd)
+        self.ffwd = FeedForward(config)
     
     def forward(self, x):
         B, T, C = x.shape
-        # pos_emb = self.positional_embedding_table(torch.arange(T, device=device))
         x = x+self.sa(self.rms_1(x))
-        # x = x+pos_emb
         x = x+self.ffwd(self.rms_2(x))
         return x
 
 class GPTLanguageModel(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
-        self.n_embd = config.n_embd
-        self.n_heads = config.n_heads
-        self.n_layer = config.n_layer
-        self.dropout = config.dropout
-        self.vocab_size = config.vocab_size
-        self.block_size = config.block_size
+        self.config = config
 
         # each token directly reads off the logits for the next token from a lookup table
-        self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
-        self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
+        # self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
+        # self.positional_embedding_table = nn.Embedding(self.block_size, self.n_embd)
         # self.sa_heads = MultiHeadAttention(config)
         # self.dropout = nn.Dropout(self.dropout)
         # feed forward layer is needed for think about the self attention score 
         # when we pass the self attention score straight forward to the last layer 
         # it's hard to think about the meaning of the score
-        self.blocks = nn.Sequential(*[Block(config) for _ in range(self.n_layer)])
-        # self.ln_f = nn.LayerNorm(self.n_embd)
-        self.ln_f = RMSNorm(self.n_embd)
+        # self.blocks = nn.Sequential(*[Block(config) for _ in range(self.n_layer)])
+        # # self.ln_f = nn.LayerNorm(self.n_embd)
+        # self.ln_f = RMSNorm(self.n_embd)
+
         self.lm_head = nn.Linear(self.n_embd, self.vocab_size, bias=False)
+        self.transformer = nn.ModuleDict(
+            dict(
+                wte=nn.Embedding(config.vocab_size),
+                h=nn.Sequential(*[Block(config) for _ in range(config.n_layer)]),
+                ln_f=RMSNorm(config.n_embd),
+            )
+        )
 
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
@@ -233,13 +230,15 @@ class GPTLanguageModel(nn.Module):
         # C is the Channel which represents the embedding table output size
         # when we pass the idx to the token embedding table 
         # we get a embedidng tensor by the idx and get by one by one
-        token_emb = self.token_embedding_table(idx) # (B, T, C)
-        pos_emb = self.positional_embedding_table(torch.arange(T, device="cuda" if torch.cuda.is_available() else "cpu")) # (T, C)
-        x = token_emb + pos_emb
+        # token_emb = self.token_embedding_table(idx) # (B, T, C)
+        # pos_emb = self.positional_embedding_table(torch.arange(T, device="cuda" if torch.cuda.is_available() else "cpu")) # (T, C)
+        # x = token_emb + pos_emb
         # x = self.dropout(x)
         # x = self.sa_heads(x)
-        x = self.blocks(x)
-        x = self.ln_f(x)
+        x = self.transformer.wte(idx)
+        x = self.transformer.h(x)
+        x = self.transformer.ln_f(x)
+
         logits = self.lm_head(x) # (B, T, vocab_size)
 
         if targets is None:

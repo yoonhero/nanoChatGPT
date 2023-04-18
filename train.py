@@ -94,8 +94,8 @@ def main(args):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, pin_memory = True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, pin_memory = True)
 
     if load:
         model, optimizer, start_epoch = utils.load_model(output_dir, config)
@@ -129,7 +129,8 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
         t0 = time.time()
 
         # every once in a while evaluate the loss on train and val sets
-        lr = get_lr(iter, learning_rate=learning_rate) if with_lr_scheduler else learning_rate 
+        # lr = get_lr(iter, learning_rate=learning_rate) if with_lr_scheduler else learning_rate 
+        lr = learning_rate
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -137,7 +138,7 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
         _losses = []
 
         pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch+start_epoch}")
-        for idx, (x, y) in enumerate(pbar):
+        for step, (x, y) in enumerate(pbar):
             # evaluate the loss
             # masked_x = mask_tensor_random_pos(x)
             # _, loss = model(masked_x, y)
@@ -146,7 +147,7 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
 
             loss.backward()
 
-            if (idx+1) % gradient_accumulation_interval == 0 or (idx+1) == len(train_loader):
+            if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 
@@ -157,14 +158,15 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
 
         if (iter-start_epoch) % eval_interval == 0:
             estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
-            print(f"step {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
+            print(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
 
         elif is_wandb:
             import wandb
             wandb.log({
                 "iter": iter,
                 "train/loss": mean_loss,
-                "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
+                # "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
+                "lr": learning_rate
             })
 
         # Save the every save interval
