@@ -254,7 +254,7 @@ class GPTLanguageModel(nn.Module):
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -self.block_size:]
+            idx_cond = idx[:, -self.config.block_size:]
 
             logits, _ = self(idx_cond)
             # focus only on the last time step
