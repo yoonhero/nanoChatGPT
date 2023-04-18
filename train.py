@@ -129,7 +129,7 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
         t0 = time.time()
 
         # every once in a while evaluate the loss on train and val sets
-        lr = get_lr(iter) if with_lr_scheduler else learning_rate 
+        lr = get_lr(iter, learning_rate=learning_rate) if with_lr_scheduler else learning_rate 
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
