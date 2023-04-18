@@ -199,7 +199,7 @@ class GPTLanguageModel(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.transformer = nn.ModuleDict(
             dict(
-                wte=nn.Embedding(config.vocab_size),
+                wte=nn.Embedding(config.vocab_size, config.n_embd),
                 h=nn.Sequential(*[Block(config) for _ in range(config.n_layer)]),
                 ln_f=RMSNorm(config.n_embd),
             )
