@@ -196,7 +196,7 @@ class GPTLanguageModel(nn.Module):
         # # self.ln_f = nn.LayerNorm(self.n_embd)
         # self.ln_f = RMSNorm(self.n_embd)
 
-        self.lm_head = nn.Linear(self.n_embd, self.vocab_size, bias=False)
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.transformer = nn.ModuleDict(
             dict(
                 wte=nn.Embedding(config.vocab_size),
