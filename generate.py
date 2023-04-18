@@ -4,7 +4,7 @@ import argparse
 from transformers import AutoTokenizer
 
 import utils as utils
-from nanoChatGPT import MODEL_PATH, device
+import nanoChatGPT.config as config
 
 
 # KoGPT Tokenizer
@@ -31,7 +31,7 @@ def main(args):
 
     # for i in range(max_tokens):
     # generate from the model
-    context = torch.tensor(result, dtype=torch.long, device=device)
+    context = torch.tensor(result, dtype=torch.long, device=config.device)
     context = context.unsqueeze(0)
     result = decode(model.generate(context, max_new_tokens=max_tokens)[0].tolist())
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Inference My Custom GPT 🚀!!!')
 
     parser.add_argument("--max_tokens", type=int, default=1000)
-    parser.add_argument("--path", type=str, default=MODEL_PATH)
+    parser.add_argument("--path", type=str, default=config.MODEL_PATH)
     parser.add_argument("--start", type=str, default="")
     parser.add_argument("--model_size", type=str, default="LLAMA")
 
