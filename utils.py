@@ -2,6 +2,7 @@ import glob
 import torch
 from nanoChatGPT.model import GPTLanguageModel
 from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
+from pathlib import Path
 
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
@@ -11,13 +12,15 @@ def save_model(epoch: int, model, optimizer, PATH: str) -> None:
         "epoch": epoch
     }   
 
-    assert PATH[-1] == "/", "Please check the save directory."
-    torch.save(model_state_dict, PATH+f"epoch-{epoch}.tar")
+    # assert PATH[-1] == "/", "Please check the save directory."
+    save_dir = Path(PATH) / f"epoch-{epoch}.tar"
+    torch.save(model_state_dict, str(save_dir))
 
 # Load the last training checkpoint result.
 def get_last_epoch(PATH: str) -> int:
     """Get the last epoch and TAR file"""
-    files = glob.glob(f"{PATH}*")
+    path = Path(PATH)
+    files = glob.glob(f"{str(path)}/*")
     if len(files) == 0:
         return None
     
@@ -30,12 +33,16 @@ def load_model(PATH, config, best=True):
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
 
     if best:
-        assert PATH[-1] == "/", "Please Check the PATH Arguments"
-        last_epoch = get_last_epoch(PATH)
-        model_state_dict = torch.load(PATH + f"epoch-{last_epoch}.tar")
+        # assert PATH[-1] == "/", "Please Check the PATH Arguments"
+        path = Path(PATH)
+        last_epoch = get_last_epoch(str(path))
+        path = path / f"epoch-{last_epoch}.tar"
+        model_state_dict = torch.load(str(path))
     else:
-        assert PATH[-1] != "/", "Please Check the PATH Arguments"
-        model_state_dict = torch.load(PATH)
+        # assert PATH[-1] != "/", "Please Check the PATH Arguments"
+        path = Path(PATH)
+        assert path.exists(), "Please Check the model is existed."
+        model_state_dict = torch.load(str(path))
 
     model.load_state_dict(model_state_dict["model"])
     optimizer.load_state_dict(model_state_dict["optimizer"])
