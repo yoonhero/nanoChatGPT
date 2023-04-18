@@ -42,7 +42,7 @@ def get_lr(it: int, learning_rate: float) -> float:
 
 def main(args):
     batch_size = args.batch_size
-    max_epoch = args.max_epochs
+    max_epoch = args.max_epoch
     learning_rate = args.learning_rate
     eval_interval = args.eval_interval
     save_interval = args.save_interval
