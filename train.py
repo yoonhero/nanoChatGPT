@@ -98,7 +98,7 @@ def main(args):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
 
     if load:
-        model, optimizer, start_epoch = utils.load_model(output_dir, config)
+        model, optimizer, start_epoch = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
         model = GPTLanguageModel(config).to(CONFIG.device)
