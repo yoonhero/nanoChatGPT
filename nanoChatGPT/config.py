@@ -4,7 +4,7 @@ from nanoChatGPT import GPTLanguageModel
 
 # Hyper Parameters
 batch_size = 64 # how many independent sequences will we process in parallel?
-max_iters = 1000
+max_epoch = 1000
 eval_interval = 10
 save_interval = 50
 # learning_rate = 6e-4

@@ -79,7 +79,7 @@ def main(args):
             config={
                 "architecture": "GPT",
                 "dataset": "Custom Corpus Dataset",
-                "epochs": max_epoch,
+                "max_epoch": max_epoch,
                 "block_size": config.block_size,
                 "d_model": config.n_embd,
                 "n_heads": config.n_heads,
