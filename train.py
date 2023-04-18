@@ -139,8 +139,9 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
         pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch+start_epoch}")
         for idx, (x, y) in enumerate(pbar):
             # evaluate the loss
-            masked_x = mask_tensor_random_pos(x)
-            _, loss = model(masked_x, y)
+            # masked_x = mask_tensor_random_pos(x)
+            # _, loss = model(masked_x, y)
+            _, loss = model(x, y)
             _losses.append(loss.item())
 
             loss.backward()
