@@ -107,8 +107,8 @@ def main(args):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4)
     logger.info("Finishing Loading the Dataset.")
 
     if load:
