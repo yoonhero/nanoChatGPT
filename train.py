@@ -21,7 +21,7 @@ formatter = logging.Formatter('[%(asctime)s] [%(levelname)s | %(filename)s : %(l
 fileHandler = logging.FileHandler(filename="./training.log")
 fileHandler.setFormatter(formatter)
 logger.addHandler(fileHandler)
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=logging.INFO)
 
 # Train Dataset Optimization with mask the random value of the tensor
 def mask_tensor_random_pos(x):
@@ -105,8 +105,8 @@ def main(args):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4, pin_memory=True)
     logger.info("Finishing Loading the Dataset.")
 
     if load:
@@ -206,6 +206,7 @@ def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)
     context = torch.zeros(result, dtype=torch.long, device=CONFIG.device)
+    context = context.unsqueeze(0)
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
     with open('result.txt', "w") as f:
@@ -237,3 +238,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+    

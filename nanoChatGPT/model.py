@@ -5,7 +5,6 @@ import math
 from torchmetrics import functional as FM
 import matplotlib.pyplot as plt
 
-
 def human_format(num):
     magnitude = 0
     while abs(num) >= 1000:

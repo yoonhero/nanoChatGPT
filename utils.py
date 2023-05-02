@@ -3,6 +3,8 @@ import torch
 from nanoChatGPT.model import GPTLanguageModel
 from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
 from pathlib import Path
+import numpy as np
+import random
 
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
@@ -76,3 +78,14 @@ def estimate_loss(model, train_loader, val_loader):
 
     model.train()
     return out
+
+
+def set_seed():
+    seed=12499489
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
