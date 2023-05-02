@@ -207,9 +207,10 @@ def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)
-    context = torch.zeros(result, dtype=torch.long, device=CONFIG.device)
+    context = torch.LongTensor(result, device=CONFIG.device)
     context = context.unsqueeze(0)
-    result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
+    result = model.generate(context, max_new_tokens=100)[0].tolist()
+    result = decode(result)
 
     with open('result.txt', "w") as f:
         logger.info(result)
