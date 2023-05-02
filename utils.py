@@ -35,18 +35,16 @@ def load_model(PATH, config, best=True):
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
 
     if best:
-        # assert PATH[-1] == "/", "Please Check the PATH Arguments"
         path = Path(PATH)
         last_epoch = get_last_epoch(str(path))
         path = path / f"epoch-{last_epoch}.tar"
         model_state_dict = torch.load(str(path))
     else:
-        # assert PATH[-1] != "/", "Please Check the PATH Arguments"
         path = Path(PATH)
         assert path.exists(), "Please Check the model is existed."
         model_state_dict = torch.load(str(path))
 
-    model.load_state_dict(model_state_dict["model"])
+    model.load_state_dict(model_state_dict["model"], strict=False)
     optimizer.load_state_dict(model_state_dict["optimizer"])
     start_epoch = model_state_dict["epoch"]
 

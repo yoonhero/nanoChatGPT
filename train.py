@@ -99,7 +99,7 @@ def main(args):
                 "vocab": config.vocab_size
             }
         )
-        logger.info()("Initiate the WANDB.")
+        logger.info("Initiate the WANDB.")
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
     dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
@@ -172,6 +172,8 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
+        sample(tokenizer, model)
+
         dt = time.time() - t0
         mean_loss = utils.mean(_losses)
         losses[iter] = mean_loss
@@ -180,8 +182,6 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
         if (iter-start_epoch) % eval_interval == 0:
             estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
             logger.info(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
-
-            sample(tokenizer, model)
 
         elif is_wandb:
             import wandb
