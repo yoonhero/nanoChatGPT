@@ -67,6 +67,8 @@ def main(args):
 
     # Using Advanced code for speed up traning.
     is_torch_2 = int(torch.__version__[0]) >= 2
+
+    torch.multiprocessing.set_start_method('spawn')
     
     # KoGPT Tokenizer
     BOS_TOKEN = "[BOS]"
