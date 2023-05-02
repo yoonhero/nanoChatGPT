@@ -122,6 +122,7 @@ def main(args):
     
     train(
         model=model,
+        tokenizer=tokenizer,
         optimizer=optimizer, 
         train_loader=train_loader, 
         val_loader=val_loader, 
@@ -136,7 +137,7 @@ def main(args):
         is_wandb=is_wandb
     )    
 
-def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
     scaler = torch.cuda.amp.GradScaler()
     losses = np.zeros(max_epoch)
 
