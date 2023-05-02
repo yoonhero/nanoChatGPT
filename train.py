@@ -9,12 +9,19 @@ import tqdm
 import math
 import numpy as np
 import time
+import logging
 
 from nanoChatGPT import GPTLanguageModel
 import utils 
 import nanoChatGPT.config as CONFIG
 from dataset import TokenedDataset
 
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter('[%(asctime)s] [%(levelname)s | %(filename)s : %(lineno)s] >> %(message)s')
+fileHandler = logging.FileHandler(filename="./training.log")
+fileHandler.setFormatter(formatter)
+logger.addHandler(fileHandler)
+logger.setLevel(level=logging.DEBUG)
 
 # Train Dataset Optimization with mask the random value of the tensor
 def mask_tensor_random_pos(x):
@@ -57,6 +64,9 @@ def main(args):
     from_cache = args.from_cache
     save_cache = args.save_cache
     cache_directory = args.cache_directory
+
+    # Using Advanced code for speed up traning.
+    is_torch_2 = int(torch.__version__[0]) >= 2
     
     # KoGPT Tokenizer
     BOS_TOKEN = "[BOS]"
@@ -87,6 +97,7 @@ def main(args):
                 "vocab": config.vocab_size
             }
         )
+        logger.info()("Initiate the WANDB.")
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
     dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
@@ -96,15 +107,19 @@ def main(args):
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
     train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
+    logger.info("Finishing Loading the Dataset.")
 
     if load:
         model, optimizer, start_epoch = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
         model = GPTLanguageModel(config).to(CONFIG.device)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=0.1)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=1e-1)
         start_epoch = 0
 
+    if is_torch_2:
+        model = torch.compile(model)
+    
     train(
         model=model,
         optimizer=optimizer, 
@@ -120,11 +135,11 @@ def main(args):
         with_lr_scheduler=with_lr_scheduler, 
         is_wandb=is_wandb
     )    
-    
-    sample(tokenizer, model)
 
 def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+    scaler = torch.cuda.amp.GradScaler()
     losses = np.zeros(max_epoch)
+
     for iter in range(start_epoch, start_epoch+max_epoch):
         t0 = time.time()
 
@@ -145,27 +160,31 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
             _, loss = model(x, y)
             _losses.append(loss.item())
 
-            loss.backward()
+            scaler.scale(loss).backward()
+            # loss.backward()
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
-                optimizer.step()
+                # optimizer.step()
+                scaler.step(optimizer)
+                scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
         dt = time.time() - t0
         mean_loss = utils.mean(_losses)
         losses[iter] = mean_loss
-        print(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
+        logger.info(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
 
         if (iter-start_epoch) % eval_interval == 0:
             estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
-            print(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
+            logger.info(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
+
+            sample(tokenizer, model)
 
         elif is_wandb:
             import wandb
             wandb.log({
                 "iter": iter,
                 "train/loss": mean_loss,
-                # "lr": lr_scheduler.get_lr()[0] if with_lr_scheduler else learning_rate,
                 "lr": learning_rate
             })
 
@@ -180,16 +199,18 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
     
     return losses
 
-def sample(tokenizer, model: torch.nn.Module) -> None:
+def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
     # generate samples
     decode = lambda x: tokenizer.decode(x)
-    context = torch.zeros((1, 1), dtype=torch.long, device=CONFIG.device)
+    start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
+    result = tokenizer.encode(start_tokens)
+    context = torch.zeros(result, dtype=torch.long, device=CONFIG.device)
     result = decode(model.generate(context, max_new_tokens=500)[0].tolist())
 
     with open('result.txt', "w") as f:
+        logger.info(result)
         f.writelines(result)
         f.close()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')

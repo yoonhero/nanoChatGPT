@@ -29,7 +29,6 @@ def main(args):
         result += input("")
         result = encode(result)
 
-    # for i in range(max_tokens):
     # generate from the model
     context = torch.tensor(result, dtype=torch.long, device=CONFIG.device)
     context = context.unsqueeze(0)

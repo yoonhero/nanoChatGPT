@@ -81,6 +81,8 @@ class CasualAttention(nn.Module):
 
         self.c_attn = nn.Linear(self.n_embd, self.n_embd*3, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
+    
+        self.rope_cache = None
 
         if self.dropout:
             self.attn_dropout = nn.Dropout(self.dropout)
@@ -99,18 +101,29 @@ class CasualAttention(nn.Module):
         v = v.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
         q = q.view(B, T, self.n_heads, self.head_size).transpose(1, 2)
 
-        # TODO: rope cache      
-        ###### ---------------------------------------------
+
+        if self.rope_cache is None:
+            # cache for future forward calls
+            self.rope_cache = build_rope_cache(
+                seq_len=self.block_size,
+                n_elem=self.n_embd // self.n_head, 
+                dtype=x.dtype,
+                device=x.device,
+            )
+
+        q = apply_rope(q, self.rope_cache)
+        k = apply_rope(k, self.rope_cache)
 
         # for efficient using pytroch functional package is useful. 
-        try: 
-            y = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
-        except: 
-            att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1))) # (B, N_HEADS, T, T)
-            att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf')) 
-            att = F.softmax(att, dim=-1)
-            att = self.attn_dropout(att) if self.dropout else att
-            y = att @ v # (B, nh, T, hs)
+        # try: 
+        y = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
+        # except: 
+        #     print("Torch 2.0 Not Supported")
+        #     att = (q @ k.transpose(-2, -1)) * (1.0/math.sqrt(k.size(-1))) # (B, N_HEADS, T, T)
+        #     att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf')) 
+        #     att = F.softmax(att, dim=-1)
+        #     att = self.attn_dropout(att) if self.dropout else att
+        #     y = att @ v # (B, nh, T, hs)
 
         y = y.transpose(1, 2).contiguous().view(B, T, C) # (B, T, C)
         
@@ -279,6 +292,47 @@ class GPTLanguageModel(nn.Module):
     def __repr__(self):
         return f"GPT with {self.get_num_params()} paramters."
 
+
+def build_rope_cache(seq_len: int, n_elem: int, dtype: torch.dtype, device: torch.device, base: int = 10000) -> torch.Tensor:
+    """Enhanced Transformer with Rotary Position Embedding.
+
+    Derived from: https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/
+    transformers/rope/__init__.py. MIT License:
+    https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/license.
+    """
+    # $\Theta = {\theta_i = 10000^{\frac{2(i-1)}{d}}, i \in [1, 2, ..., \frac{d}{2}]}$
+    theta = 1.0 / (base ** (torch.arange(0, n_elem, 2, dtype=dtype, device=device) / n_elem))
+
+    # Create position indexes `[0, 1, ..., seq_len - 1]`
+    seq_idx = torch.arange(seq_len, dtype=dtype, device=device)
+
+    # Calculate the product of position index and $\theta_i$
+    idx_theta = torch.outer(seq_idx, theta).float()
+
+    cache = torch.stack([torch.cos(idx_theta), torch.sin(idx_theta)], dim=-1)
+
+    # this is to mimic the behaviour of complex32, else we will get different results
+    if dtype in (torch.float16, torch.bfloat16, torch.int8):
+        cache = cache.half()
+    return cache
+
+def apply_rope(x: torch.Tensor, rope_cache: torch.Tensor) -> torch.Tensor:
+    x = x.transpose(1, 2)
+
+    # truncate to support variable sizes
+    T = x.size(1)
+    rope_cache = rope_cache[:T]
+
+    # cast because the reference does
+    xshaped = x.float().reshape(*x.shape[:-1], -1, 2)
+    rope_cache = rope_cache.view(1, xshaped.size(1), 1, xshaped.size(3), 2)
+    x_out2 = torch.stack(
+        [xshaped[..., 0] * rope_cache[..., 0] - xshaped[..., 1] * rope_cache[..., 1],
+         xshaped[..., 1] * rope_cache[..., 0] + xshaped[..., 0] * rope_cache[..., 1],
+        ], -1)
+
+    x_out2 = x_out2.flatten(3)
+    return x_out2.transpose(1, 2).type_as(x)
 
 if __name__ == "__main__":
     print(human_format(60000000))

@@ -1,0 +1,5 @@
+wandb
+transformers
+tokenizers
+torchmetrics
+sentencepiece
