@@ -106,7 +106,7 @@ class CasualAttention(nn.Module):
             # cache for future forward calls
             self.rope_cache = build_rope_cache(
                 seq_len=self.block_size,
-                n_elem=self.n_embd // self.n_head, 
+                n_elem=self.n_embd // self.n_heads, 
                 dtype=x.dtype,
                 device=x.device,
             )
