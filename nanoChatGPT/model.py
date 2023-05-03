@@ -19,16 +19,16 @@ class GPT(nn.Module):
         # # self.ln_f = nn.LayerNorm(self.n_embd)
         # self.ln_f = RMSNorm(self.n_embd)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        self.transformer = nn.ModuleDict(
-            dict(
-                wte=nn.Embedding(config.vocab_size, config.n_embd),
-                h=nn.Sequential(*[Block(config) for _ in range(config.n_layer)]),
-                ln_f=RMSNorm(config.n_embd),
-            )
-        )
-        # self.wte = nn.Embedding(config.vocab_size, config.n_embd)
-        # self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)])
-        # self.ln_f = RMSNorm(config.n_embd)
+        # self.transformer = nn.ModuleDict(
+        #     dict(
+        #         wte=nn.Embedding(config.vocab_size, config.n_embd),
+        #         h=nn.Sequential(*[Block(config) for _ in range(config.n_layer)]),
+        #         ln_f=RMSNorm(config.n_embd),
+        #     )
+        # )
+        self.wte = nn.Embedding(config.vocab_size, config.n_embd)
+        self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)])
+        self.ln_f = RMSNorm(config.n_embd)
 
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
@@ -54,9 +54,9 @@ class GPT(nn.Module):
         # C is the Channel which represents the embedding table output size
         # when we pass the idx to the token embedding table 
         # we get a embedidng tensor by the idx and get by one by one
-        x = self.transformer.wte(idx)
-        x = self.transformer.h(x)
-        x = self.transformer.ln_f(x)
+        x = self.wte(idx)
+        x = self.blocks(x)
+        x = self.ln_f(x)
 
         logits = self.lm_head(x) # (B, T, vocab_size)
 
