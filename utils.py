@@ -1,6 +1,6 @@
 import glob 
 import torch
-from nanoChatGPT.model import GPTLanguageModel
+from nanoChatGPT.model import GPT
 from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
 from pathlib import Path
 import numpy as np
@@ -13,8 +13,6 @@ def save_model(epoch: int, model, optimizer, PATH: str) -> None:
         "optimizer": optimizer.state_dict(),
         "epoch": epoch
     }   
-
-    # assert PATH[-1] == "/", "Please check the save directory."
     save_dir = Path(PATH) / f"epoch-{epoch}.tar"
     torch.save(model_state_dict, str(save_dir))
 
@@ -31,7 +29,7 @@ def get_last_epoch(PATH: str) -> int:
 
 # Load the model with the configuration. 
 def load_model(PATH, config, best=True):
-    model = GPTLanguageModel(config).to(device)
+    model = GPT(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
 
     if best:
@@ -67,19 +65,16 @@ def estimate_loss(model, train_loader, val_loader):
     for split in ["train", "val"]:
         losses = []
         d = train_loader if split=="train" else val_loader
-
         for X, Y in d:
             _, loss = model(X, Y)
             losses.append(loss.item())
-
         out[split] = mean(losses)
 
     model.train()
     return out
 
 
-def set_seed():
-    seed=12499489
+def set_seed(seed=12499489):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)

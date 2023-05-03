@@ -1,11 +1,11 @@
 import torch
 
-from nanoChatGPT.model import GPTLanguageModel
+from nanoChatGPT.model import GPT
 from nanoChatGPT.config import LARGE_GPT_CONFIG
 from utils import load_model
 
 model, _, _ = load_model("./tmp/checkpoints/epoch-80.tar", LARGE_GPT_CONFIG, best=False)
-# model = GPTLanguageModel(LARGE_GPT_CONFIG)
+# model = GPT(LARGE_GPT_CONFIG)
 X = torch.zeros((1, 128)).long()
 
 input_names = ["Tokens"]

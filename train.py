@@ -11,7 +11,7 @@ import numpy as np
 import time
 import logging
 
-from nanoChatGPT import GPTLanguageModel
+from nanoChatGPT import GPT
 import utils 
 import nanoChatGPT.config as CONFIG
 from dataset import TokenedDataset
@@ -68,6 +68,9 @@ def main(args):
     # Using Advanced code for speed up traning.
     is_torch_2 = int(torch.__version__[0]) >= 2
 
+    # Set Up seed.
+    utils.set_seed()
+
     torch.multiprocessing.set_start_method('spawn')
     
     # KoGPT Tokenizer
@@ -86,7 +89,6 @@ def main(args):
         wandb.init(
             # set the wandb project where this run will be logged
             project="nanoChatGPT",
-            
             # track hyperparameters and run metadata
             config={
                 "architecture": "GPT",
@@ -107,7 +109,7 @@ def main(args):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=torch.cuda.device_count()*4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4)
     logger.info("Finishing Loading the Dataset.")
 
@@ -115,7 +117,7 @@ def main(args):
         model, optimizer, start_epoch = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
-        model = GPTLanguageModel(config).to(CONFIG.device)
+        model = GPT(config).to(CONFIG.device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=1e-1)
         start_epoch = 0
 
@@ -164,10 +166,12 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
             _losses.append(loss.item())
 
             scaler.scale(loss).backward()
-            # loss.backward()
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
-                # optimizer.step()
+                # Gradient Clipping for Efficient Learning
+                max_norm = 5
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
@@ -202,8 +206,8 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
     
     return losses
 
+# Generate the sample.
 def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
-    # generate samples
     decode = lambda x: tokenizer.decode(x)
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)
