@@ -26,6 +26,9 @@ class GPT(nn.Module):
                 ln_f=RMSNorm(config.n_embd),
             )
         )
+        # self.wte = nn.Embedding(config.vocab_size, config.n_embd)
+        # self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)])
+        # self.ln_f = RMSNorm(config.n_embd)
 
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper

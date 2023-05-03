@@ -1,5 +1,6 @@
 import glob 
 import torch
+import torch.nn as nn
 from nanoChatGPT.model import GPT
 from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
 from pathlib import Path
@@ -9,7 +10,7 @@ import random
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
     model_state_dict = {
-        "model": model.state_dict(),
+        "model": model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict(),
         "optimizer": optimizer.state_dict(),
         "epoch": epoch
     }   
@@ -42,7 +43,11 @@ def load_model(PATH, config, best=True):
         assert path.exists(), "Please Check the model is existed."
         model_state_dict = torch.load(str(path))
 
-    model.load_state_dict(model_state_dict["model"], strict=False)
+    if isinstance(model, nn.DataParallel):
+        model.module.load_state_dict(model_state_dict["model"])
+    else:
+        model.load_state_dict(model_state_dict["model"])
+
     optimizer.load_state_dict(model_state_dict["optimizer"])
     start_epoch = model_state_dict["epoch"]
 
@@ -50,7 +55,7 @@ def load_model(PATH, config, best=True):
 
 
 def getModelConfig(model_size):
-    configs = {"small":SMALL_GPT_CONFIG, "large":LARGE_GPT_CONFIG, "KOGPT":KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG}
+    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG}
     assert model_size in configs.keys(), "Please Choose Appropriate Model Size"
     config = configs[model_size]
 
