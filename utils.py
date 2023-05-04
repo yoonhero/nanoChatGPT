@@ -6,6 +6,7 @@ from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT
 from pathlib import Path
 import numpy as np
 import random
+from collections import OrderedDict
 
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
@@ -43,10 +44,17 @@ def load_model(PATH, config, best=True):
         assert path.exists(), "Please Check the model is existed."
         model_state_dict = torch.load(str(path))
 
+    processed_state_dict = OrderedDict()
+    for n, v in model_state_dict["model"].items():
+        name = n.replace("_orig_mod.", "")
+        name = name.replace("transformer.","") 
+        name = name.replace("h.", "blocks.")
+        processed_state_dict[name] = v
+
     if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(model_state_dict["model"])
+        model.module.load_state_dict(processed_state_dict)
     else:
-        model.load_state_dict(model_state_dict["model"])
+        model.load_state_dict(processed_state_dict)
 
     optimizer.load_state_dict(model_state_dict["optimizer"])
     start_epoch = model_state_dict["epoch"]
@@ -87,3 +95,4 @@ def set_seed(seed=12499489):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
