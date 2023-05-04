@@ -44,17 +44,16 @@ def load_model(PATH, config, best=True):
         assert path.exists(), "Please Check the model is existed."
         model_state_dict = torch.load(str(path))
 
-    processed_state_dict = OrderedDict()
-    for n, v in model_state_dict["model"].items():
-        name = n.replace("_orig_mod.", "")
-        name = name.replace("transformer.","") 
-        name = name.replace("h.", "blocks.")
-        processed_state_dict[name] = v
+    state_dict = model_state_dict["model"]
+    unwanted_prefix = '_orig_mod.'
+    for k,v in list(state_dict.items()):
+        if k.startswith(unwanted_prefix):
+            state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
 
     if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(processed_state_dict)
+        model.module.load_state_dict(state_dict)
     else:
-        model.load_state_dict(processed_state_dict)
+        model.load_state_dict(state_dict)
 
     optimizer.load_state_dict(model_state_dict["optimizer"])
     start_epoch = model_state_dict["epoch"]
