@@ -57,6 +57,30 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int,
 
     return tokens
 
+
+def encode_from_texts_v2(texts:list[str], tokenizer, block_size:int):
+    tokens = []
+    pbar = tqdm.tqdm(
+        texts,
+        smoothing=0,
+        leave=True,
+        dynamic_ncols=True,
+    )
+    for text in pbar:
+        # print(text)
+        if text == "":
+            continue
+        
+        encoded_text = tokenizer.encode(text, bos=True, eos=True)
+        temp_tokens = np.array(encoded_text, dtype=np.int64)
+        length = len(temp_tokens)
+        padding = -length % (block_size+1)
+        temp_tokens = np.reshape(np.concatenate((temp_tokens, np.ones(padding)*tokenizer.pad_id)), (-1, block_size+1))
+        tokens = np.concatenate((tokens, temp_tokens), axis=0) if len(tokens) != 0 else temp_tokens
+
+    return tokens
+
+
 def read_text_from_xml(xml_dir:str):
     try:
         tree = parse(xml_dir)

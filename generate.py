@@ -5,13 +5,15 @@ from transformers import AutoTokenizer
 
 import utils as utils
 import nanoChatGPT.config as CONFIG
+from nanoChatGPT.tokenizer import Tokenizer
 
 # KoGPT Tokenizer
-enc = AutoTokenizer.from_pretrained(
-  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
-  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
-)
-encode = lambda x: enc.encode(x)
+# enc = AutoTokenizer.from_pretrained(
+#   'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+#   bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+# )
+enc = Tokenizer("./tokenizer/tokenizer.model")
+encode = lambda x: enc.encode(x, bos=True)
 decode = lambda x: enc.decode(x)
 
 def main(args):
@@ -35,7 +37,7 @@ def main(args):
         context = context.unsqueeze(0)
 
         result = model.generate(context, max_new_tokens=max_tokens)
-        decoded_result = decode(result[0].tolist())   
+        decoded_result = decode(result[0])   
         return decoded_result
 
     result = generate(result)

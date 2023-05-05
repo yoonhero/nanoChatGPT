@@ -15,6 +15,7 @@ from nanoChatGPT import GPT
 import utils 
 import nanoChatGPT.config as CONFIG
 from dataset import TokenedDataset
+from nanoChatGPT.tokenizer import Tokenizer
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('[%(asctime)s] [%(levelname)s | %(filename)s : %(lineno)s] >> %(message)s')
@@ -80,7 +81,8 @@ def main(args):
     PAD_TOKEN = "[PAD]"
     MASK_TOKEN = "[MASK]"
 
-    tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
+    # tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
+    tokenizer = Tokenizer("./tokenizer/tokenizer.mode")
 
     config = utils.getModelConfig(args.model_size)
 
@@ -169,8 +171,8 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
                 # Gradient Clipping for Efficient Learning
-                max_norm = 5
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+                # max_norm = 5
+                # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
                 scaler.step(optimizer)
                 scaler.update()
@@ -207,10 +209,10 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
     return losses
 
 # Generate the sample.
-def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
+def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
-    start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
-    result = tokenizer.encode(start_tokens)
+    start_tokens = "세상을 바꾸는 것은 누구일까?"
+    result = tokenizer.encode(start_tokens, bos=True)
     context = torch.tensor(result, device=CONFIG.device, dtype=torch.long,)
     context = context.unsqueeze(0)
     result = model.generate(context, max_new_tokens=100)[0].tolist()
@@ -232,7 +234,7 @@ if __name__ == "__main__":
     parser.add_argument("--gradient_accumulation_interval", type=int, default=5)
     parser.add_argument("--output_dir", type=str, default=CONFIG.TRAINING_OUTPUT_DIR)
     parser.add_argument('--load_model', action='store_true')
-    parser.add_argument("--model_size", type=str, default="LLAMA")
+    parser.add_argument("--model_size", type=str, default="BASIC")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--with_lr_scheduler", action="store_true")
     parser.add_argument("--encoding", type=str, default="utf-8")
