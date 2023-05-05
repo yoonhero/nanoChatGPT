@@ -85,6 +85,7 @@ def main(args):
     tokenizer = Tokenizer("./tokenizer/tokenizer.model")
 
     config = utils.getModelConfig(args.model_size)
+    print(args.model_size)
 
     if is_wandb:
         import wandb

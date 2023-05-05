@@ -281,7 +281,6 @@ def human_format(num):
     num = int(num * 10) / 10
     return f"{f'{num:f}'.rstrip('0').rstrip('.')}{['', 'k', 'M', 'B', 'T'][magnitude]}"
 
-
 def build_rope_cache(seq_len: int, n_elem: int, dtype: torch.dtype, device: torch.device, base: int = 10000) -> torch.Tensor:
     """Enhanced Transformer with Rotary Position Embedding.
 
@@ -305,6 +304,7 @@ def build_rope_cache(seq_len: int, n_elem: int, dtype: torch.dtype, device: torc
         cache = cache.half()
     return cache
 
+
 def apply_rope(x: torch.Tensor, rope_cache: torch.Tensor) -> torch.Tensor:
     x = x.transpose(1, 2)
 
@@ -322,8 +322,3 @@ def apply_rope(x: torch.Tensor, rope_cache: torch.Tensor) -> torch.Tensor:
 
     x_out2 = x_out2.flatten(3)
     return x_out2.transpose(1, 2).type_as(x)
-
-if __name__ == "__main__":
-    # print(human_format(60000000))
-    model = GPT(config=config.GPT_FINAL_CONFIG)
-
