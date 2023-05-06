@@ -2,7 +2,7 @@ import glob
 import torch
 import torch.nn as nn
 from nanoChatGPT.model import GPT
-from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG, GPT_FINAL_CONFIG
+from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG, GPT_FINAL_CONFIG, UGAUGA_GPT_CONFIG
 from pathlib import Path
 import numpy as np
 import random
@@ -62,7 +62,7 @@ def load_model(PATH, config, best=True):
 
 
 def getModelConfig(model_size):
-    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG, "BASIC": GPT_FINAL_CONFIG}
+    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG, "BASIC": GPT_FINAL_CONFIG, "UGA": UGAUGA_GPT_CONFIG}
     assert model_size in configs.keys(), "Please Choose Appropriate Model Size"
     config = configs[model_size]
 

@@ -8,27 +8,27 @@ import nanoChatGPT.config as CONFIG
 from nanoChatGPT.tokenizer import Tokenizer
 
 # KoGPT Tokenizer
-# enc = AutoTokenizer.from_pretrained(
-#   'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
-#   bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
-# )
-enc = Tokenizer("./tokenizer/tokenizer.model")
+enc = AutoTokenizer.from_pretrained(
+  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+)
+# enc = Tokenizer("./tokenizer/tokenizer.model")
 encode = lambda x: enc.encode(x, bos=True)
 decode = lambda x: enc.decode(x)
 
 def main(args):
     model_path = args.path
     max_tokens = args.max_tokens
-    start_tokens = "[BOS]" + args.start
-    result = encode(start_tokens)
+    start_tokens = args.start
+    
     config = utils.getModelConfig(args.model_size)
     model, _, _ = utils.load_model(model_path, config, best=False)
     model.eval()
 
     if start_tokens == "":
-        result = input(">> ")
-        result = encode(result)
-
+        start_tokens = input(">> ")
+    result = encode(start_tokens)
+    
     @torch.no_grad()
     def generate(context):
         # generate from the model

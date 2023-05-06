@@ -12,7 +12,8 @@ class Tokenizer:
         self.processor = SentencePieceProcessor(model_file=str(model_path))
         self.bos_id = self.processor.bos_id()
         self.eos_id = self.processor.eos_id()
-        self.pad_id = self.processor.pad_id()
+        # self.pad_id = self.processor.pad_id()
+        self.pad_id = 480001
 
     @property
     def vocab_size(self) -> int:
