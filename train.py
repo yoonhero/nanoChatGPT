@@ -214,9 +214,9 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
 # Generate the sample.
 def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
-    start_tokens = "세상을 바꾸는 것은 누구일까?"
-    result = tokenizer.encode(start_tokens, bos=True)
-    context = torch.tensor(result, device=CONFIG.device, dtype=torch.long,)
+    start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
+    result = tokenizer.encode(start_tokens)
+    context = torch.tensor(result, device=CONFIG.device, dtype=torch.long)
     context = context.unsqueeze(0)
     result = model.generate(context, max_new_tokens=100)[0].tolist()
     result = decode(result)
