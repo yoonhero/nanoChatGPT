@@ -157,10 +157,10 @@ class CoolDataset(Dataset):
             # token = np.reshape(np.concatenate((token, np.ones(padding)*self.tokenizer.encode("[PAD]"))), (-1, self.block_size+1))
             token = np.pad(token, (0, self.block_size - len(token) + 1), 'constant', constant_values=(0,self.tokenizer.encode("[PAD]")))
 
-        ix = torch.randint(len(token) - self.block_size - 1, (1,))[0]
+        # ix = torch.randint(len(token) - self.block_size - 1, (1,))[0]
 
-        x = torch.as_tensor(token[ix:ix+self.block_size], dtype=torch.long, device=self.device)
-        y = torch.as_tensor(token[ix+1:ix+self.block_size+1], dtype=torch.long, device=self.device)
+        x = torch.as_tensor(token[:self.block_size], dtype=torch.long, device=self.device)
+        y = torch.as_tensor(token[1:self.block_size+1], dtype=torch.long, device=self.device)
 
         return x, y
 
