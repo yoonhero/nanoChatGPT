@@ -2,7 +2,7 @@ import glob
 import torch
 import torch.nn as nn
 from nanoChatGPT.model import GPT
-from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG
+from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG, GPT_FINAL_CONFIG, UGAUGA_GPT_CONFIG
 from pathlib import Path
 import numpy as np
 import random
@@ -45,10 +45,16 @@ def load_model(PATH, config, best=True):
         assert path.exists(), "Please Check the model is existed."
         model_state_dict = torch.load(str(path))
 
+    state_dict = model_state_dict["model"]
+    unwanted_prefix = '_orig_mod.'
+    for k,v in list(state_dict.items()):
+        if k.startswith(unwanted_prefix):
+            state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
+
     if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(model_state_dict["model"])
+        model.module.load_state_dict(state_dict)
     else:
-        model.load_state_dict(model_state_dict["model"])
+        model.load_state_dict(state_dict)
 
     optimizer.load_state_dict(model_state_dict["optimizer"])
     start_epoch = model_state_dict["epoch"]
@@ -57,7 +63,7 @@ def load_model(PATH, config, best=True):
 
 
 def getModelConfig(model_size):
-    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG}
+    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG, "BASIC": GPT_FINAL_CONFIG, "UGA": UGAUGA_GPT_CONFIG}
     assert model_size in configs.keys(), "Please Choose Appropriate Model Size"
     config = configs[model_size]
 
@@ -97,3 +103,4 @@ def set_seed(seed=12499489):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
