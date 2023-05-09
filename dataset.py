@@ -14,7 +14,7 @@ from nanoChatGPT import device
 import utils 
 
 
-def merge_dataset(dataset_directories: list[str], result_dir:str):
+def merge_dataset(dataset_directories, result_dir:str):
     datasets = glob.glob(f"{dataset_directories}/*.gz")
     assert len(datasets) != 0, "Please check that the dataset file exists."
     result = []
@@ -34,7 +34,7 @@ def merge_dataset(dataset_directories: list[str], result_dir:str):
         np.save(f, result)
 
 
-def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
+def encode_from_texts(texts, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     tokens = []
     pbar = tqdm.tqdm(
         texts,
@@ -60,7 +60,7 @@ def encode_from_texts(texts:list[str], tokenizer: AutoTokenizer, block_size:int,
     return tokens
 
 
-def encode_from_texts_v2(texts:list[str], tokenizer, block_size:int):
+def encode_from_texts_v2(texts, tokenizer, block_size:int):
     tokens = []
     pbar = tqdm.tqdm(
         texts,
@@ -81,7 +81,6 @@ def encode_from_texts_v2(texts:list[str], tokenizer, block_size:int):
         tokens = np.concatenate((tokens, temp_tokens), axis=0) if len(tokens) != 0 else temp_tokens
 
     return tokens
-
 
 def read_text_from_xml(xml_dir:str):
     try:
@@ -116,7 +115,6 @@ def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: 
 
     return tokens
 
-
 class CoolDataset(Dataset):
     def __init__(
             self, 
@@ -134,12 +132,12 @@ class CoolDataset(Dataset):
 
         self.tokenizer = tokenizer
         
-        with gzip.open('../dataset/corpus.txt.gz', 'rb') as f:
+        with gzip.open(corpus_path, 'rb') as f:
             zipeed_texts = f.read()
             texts = utils.gunzip_bytes_obj(zipeed_texts)
 
         self.texts = texts.split("\n\n===\n\n")
-        self.num_subsets = self.tokens.shape[0]
+        self.num_subsets = len(self.texts)
 
     def __len__(self):
         return self.num_subsets
@@ -200,7 +198,6 @@ class TokenedDataset(Dataset):
         assert load_mode in mode, "Please Select Appropriate Mode for Dataset Loading."
         if load_mode=="xml":
             self.tokens = encode_text_from_xml(file_path, tokenizer=tokenizer, block_size=block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
-            # print(self.tokens)
             self.num_subsets = self.tokens.shape[0]
         elif load_mode=="txt":
             self.tokens = encode_text_from_txt(file_path, tokenizer=tokenizer, block_size=block_size, encoding=encoding, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN)
