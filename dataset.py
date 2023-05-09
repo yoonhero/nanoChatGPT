@@ -153,8 +153,9 @@ class CoolDataset(Dataset):
         token = self._collate_fn(text)
 
         if len(token) < self.block_size+1:
-            padding = -len(token) % (self.block_size+1)
-            temp_tokens = np.reshape(np.concatenate((temp_tokens, np.ones(padding)*self.tokenizer.encode("[PAD]"))), (-1, self.block_size+1))
+            # padding = -len(token) % (self.block_size+1)
+            # token = np.reshape(np.concatenate((token, np.ones(padding)*self.tokenizer.encode("[PAD]"))), (-1, self.block_size+1))
+            token = np.pad(token, (0, self.block_size - len(token) + 1), 'constant', constant_values=(0,self.tokenizer.encode("[PAD]")))
 
         ix = torch.randint(len(token) - self.block_size - 1, (1,))[0]
 
