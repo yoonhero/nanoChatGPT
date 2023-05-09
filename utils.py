@@ -63,7 +63,7 @@ def load_model(PATH, config, best=True):
 
 
 def getModelConfig(model_size):
-    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG, "BASIC": GPT_FINAL_CONFIG, "UGA": UGAUGA_GPT_CONFIG}
+    configs = {"small": SMALL_GPT_CONFIG, "large": LARGE_GPT_CONFIG, "KOGPT": KOGPT_CONFIG, "LLAMA": LLAMA_7B_CONFIG, "BASIC": GPT_FINAL_CONFIG}
     assert model_size in configs.keys(), "Please Choose Appropriate Model Size"
     config = configs[model_size]
 
