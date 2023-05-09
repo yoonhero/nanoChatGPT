@@ -2,7 +2,7 @@ import glob
 import torch
 import torch.nn as nn
 from nanoChatGPT.model import GPT
-from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG, GPT_FINAL_CONFIG, UGAUGA_GPT_CONFIG
+from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT_CONFIG, KOGPT_CONFIG, LLAMA_7B_CONFIG, GPT_FINAL_CONFIG
 from pathlib import Path
 import numpy as np
 import random
