@@ -143,7 +143,7 @@ class CoolDataset(Dataset):
         return self.num_subsets
 
     def _collate_fn(self, text):
-        encoded_text = tokenizer.encode(text)
+        encoded_text = self.tokenizer.encode(text)
         temp_tokens = np.array(encoded_text, dtype=np.int64)
         return temp_tokens
 
