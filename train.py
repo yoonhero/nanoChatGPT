@@ -81,7 +81,6 @@ def main(args):
     MASK_TOKEN = "[MASK]"
 
     tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
-    # tokenizer = Tokenizer("./tokenizer/tokenizer.model")
 
     config = utils.getModelConfig(args.model_size)
     print(args.model_size)
@@ -89,9 +88,7 @@ def main(args):
     if is_wandb:
         import wandb
         wandb.init(
-            # set the wandb project where this run will be logged
             project="nanoChatGPT",
-            # track hyperparameters and run metadata
             config={
                 "architecture": "GPT",
                 "dataset": "Custom Corpus Dataset",
@@ -105,9 +102,7 @@ def main(args):
         )
         logger.info("Initiate the WANDB.")
 
-    # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
-    # dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
-    dataset = CoolDataset(dataset_path, tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, device=CONFIG.device)
+    dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, device=CONFIG.device)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -181,9 +176,9 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
-        sample(tokenizer, model)
-
         dt = time.time() - t0
+
+        sample(tokenizer, model)
         mean_loss = utils.mean(_losses)
         losses[iter] = mean_loss
         logger.info(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
@@ -249,7 +244,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    utils.set_seed()
-    
     main(args)
     

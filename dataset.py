@@ -7,12 +7,14 @@ import gzip
 import numpy as np
 from transformers import AutoTokenizer
 from xml.etree.ElementTree import parse
-from sys import getsizeof
 import numpy as np
 import tqdm
 from nanoChatGPT import device
 import utils 
+import os
+from multiprocessing import Pool
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def merge_dataset(dataset_directories, result_dir:str):
     datasets = glob.glob(f"{dataset_directories}/*.gz")
@@ -120,6 +122,8 @@ class CoolDataset(Dataset):
             self, 
             corpus_path:str, 
             tokenizer:AutoTokenizer, 
+            from_cache:bool,
+            cache_dir: str,
             block_size:int, 
             EOS_TOKEN:str,
             BOS_TOKEN:str,
@@ -131,13 +135,27 @@ class CoolDataset(Dataset):
         self.BOS_TOKEN = BOS_TOKEN
 
         self.tokenizer = tokenizer
-        
-        with gzip.open(corpus_path, 'rb') as f:
-            zipeed_texts = f.read()
-            texts = utils.gunzip_bytes_obj(zipeed_texts)
 
-        self.texts = texts.split("\n\n===\n\n")
-        self.num_subsets = len(self.texts)
+        self.cache_dir = cache_dir
+        self.pool_size = 4
+
+        if not from_cache:
+            with gzip.open(corpus_path, 'rb') as f:
+                zipeed_texts = f.read()
+                texts = utils.gunzip_bytes_obj(zipeed_texts)
+
+            self.texts = texts.split("\n\n===\n\n")
+            self.num_subsets = len(self.texts)
+
+            self.tokens = []
+            with Pool(self.pool_size) as p:
+                _ = tqdm.tqdm(p.imap(self.process, self.texts), total=len(self.num_subsets))
+                self.save_cache(self.cache_dir)
+        else:
+            f = gzip.GzipFile(self.cache_dir, "r")
+            self.tokens = np.load(f)
+            self.num_subsets = self.tokens.shape[0]
+            return
 
     def __len__(self):
         return self.num_subsets
@@ -146,27 +164,32 @@ class CoolDataset(Dataset):
         encoded_text = self.tokenizer.encode(text)
         temp_tokens = np.array(encoded_text, dtype=np.int64)
         return temp_tokens
-
-    def __getitem__(self, idx):
-        text = self.texts[idx]
+    
+    def process(self, text):
         text = f"{self.BOS_TOKEN} {text} {self.EOS_TOKEN}" 
         token = self._collate_fn(text)
 
         if len(token) < self.block_size+1:
-            # padding = -len(token) % (self.block_size+1)
-            # token = np.reshape(np.concatenate((token, np.ones(padding)*self.tokenizer.encode("[PAD]"))), (-1, self.block_size+1))
             token = np.pad(token, (0, self.block_size - len(token) + 1), 'constant', constant_values=(0,self.tokenizer.encode("[PAD]")))
 
-        # ix = torch.randint(len(token) - self.block_size - 1, (1,))[0]
+        token = token[:self.block_size+1]
+        token = np.expand_dims(token, axis=0)
+        self.tokens = np.concatenate((self.tokens, token), axis=0) if len(self.tokens) != 0 else token
 
-        x = torch.as_tensor(token[:self.block_size], dtype=torch.long, device=self.device)
-        y = torch.as_tensor(token[1:self.block_size+1], dtype=torch.long, device=self.device)
+    def save_cache(self, cache_destination):
+        with gzip.open(cache_destination, "wb") as f:
+            np.save(f, self.tokens)
+
+    def __getitem__(self, idx): 
+        token = self.tokens[idx]
+        x = torch.as_tensor(token[:-1], dtype=torch.long, device=self.device)
+        y = torch.as_tensor(token[1:], dtype=torch.long, device=self.device)
 
         return x, y
 
     def __repr__(self) -> str: 
-        return f"TokenDataset containing {self.num_subsets} subsets."
-
+        return f"CoolDataset containing {self.num_subsets} subsets."
+    
 
 class TokenedDataset(Dataset):
     def __init__(
