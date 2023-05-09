@@ -149,7 +149,7 @@ class CoolDataset(Dataset):
 
             self.tokens = []
             with Pool(self.pool_size) as p:
-                _ = tqdm.tqdm(p.imap(self.process, self.texts), total=len(self.num_subsets))
+                _ = tqdm.tqdm(p.imap(self.process, self.texts), total=self.num_subsets)
                 self.save_cache(self.cache_dir)
         else:
             f = gzip.GzipFile(self.cache_dir, "r")
