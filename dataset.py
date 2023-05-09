@@ -11,6 +11,8 @@ from sys import getsizeof
 import numpy as np
 import tqdm
 from nanoChatGPT import device
+import utils 
+
 
 def merge_dataset(dataset_directories: list[str], result_dir:str):
     datasets = glob.glob(f"{dataset_directories}/*.gz")
@@ -89,6 +91,59 @@ def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: 
     tokens = encode_from_texts(texts, tokenizer, block_size)
 
     return tokens
+
+
+class CoolDataset(Dataset):
+    def __init__(
+            self, 
+            corpus_path:str, 
+            tokenizer:AutoTokenizer, 
+            block_size:int, 
+            EOS_TOKEN:str,
+            BOS_TOKEN:str,
+            device="cuda",
+        ):
+        self.device = device
+        self.block_size = block_size
+        self.EOS_TOKEN = EOS_TOKEN
+        self.BOS_TOKEN = BOS_TOKEN
+
+        self.tokenizer = tokenizer
+        
+        with gzip.open('../dataset/corpus.txt.gz', 'rb') as f:
+            zipeed_texts = f.read()
+            texts = utils.gunzip_bytes_obj(zipeed_texts)
+
+        self.texts = texts.split("\n\n===\n\n")
+        self.num_subsets = self.tokens.shape[0]
+
+    def __len__(self):
+        return self.num_subsets
+
+    def _collate_fn(self, text):
+        encoded_text = tokenizer.encode(text)
+        temp_tokens = np.array(encoded_text, dtype=np.int64)
+        return temp_tokens
+
+    def __getitem__(self, idx):
+        text = self.texts[idx]
+        text = f"{self.BOS_TOKEN} {text} {self.EOS_TOKEN}" 
+        token = self._collate_fn(text)
+
+        if len(token) < self.block_size+1:
+            padding = -len(token) % (self.block_size+1)
+            temp_tokens = np.reshape(np.concatenate((temp_tokens, np.ones(padding)*self.tokenizer.encode("[PAD]"))), (-1, self.block_size+1))
+
+        ix = torch.randint(len(token) - self.block_size - 1, (1,))[0]
+
+        x = torch.as_tensor(token[ix:ix+self.block_size], dtype=torch.long, device=self.device)
+        y = torch.as_tensor(token[ix+1:ix+self.block_size+1], dtype=torch.long, device=self.device)
+
+        return x, y
+
+    def __repr__(self) -> str: 
+        return f"TokenDataset containing {self.num_subsets} subsets."
+
 
 class TokenedDataset(Dataset):
     def __init__(
@@ -193,6 +248,7 @@ def old_create_dataset():
 
     with open("data.txt", "w") as f:
         f.writelines(result)
+
 
 
 if __name__ == '__main__':

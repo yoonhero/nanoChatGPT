@@ -6,6 +6,8 @@ from nanoChatGPT.config import learning_rate, device,LARGE_GPT_CONFIG, SMALL_GPT
 from pathlib import Path
 import numpy as np
 import random
+import gzip
+
 
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
@@ -77,6 +79,14 @@ def estimate_loss(model, train_loader, val_loader):
 
     model.train()
     return out
+
+
+def gzip_str(string_: str) -> bytes:
+    return gzip.compress(string_.encode())
+
+
+def gunzip_bytes_obj(bytes_obj: bytes) -> str:
+    return gzip.decompress(bytes_obj).decode()
 
 
 def set_seed(seed=12499489):

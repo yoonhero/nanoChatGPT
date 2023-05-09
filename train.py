@@ -14,7 +14,7 @@ import logging
 from nanoChatGPT import GPT
 import utils 
 import nanoChatGPT.config as CONFIG
-from dataset import TokenedDataset
+from dataset import TokenedDataset, CoolDataset
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('[%(asctime)s] [%(levelname)s | %(filename)s : %(lineno)s] >> %(message)s')
@@ -104,7 +104,8 @@ def main(args):
         logger.info("Initiate the WANDB.")
 
     # dataset = GPTDataset(TXT_FILE_PATH, tokenizer, block_size=config.block_size, encoding=encoding)
-    dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
+    # dataset = TokenedDataset(dataset_path, tokenizer=tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, load_mode=load_mode, from_cache=from_cache, save_cache=save_cache, cache_destination=cache_directory, device=CONFIG.device, encoding=encoding)
+    dataset = CoolDataset(dataset_path, tokenizer, block_size=config.block_size, EOS_TOKEN=EOS_TOKEN, BOS_TOKEN=BOS_TOKEN, device=CONFIG.device)
     total_size = len(dataset)
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
@@ -244,5 +245,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    utils.set_seed()
+    
     main(args)
     
