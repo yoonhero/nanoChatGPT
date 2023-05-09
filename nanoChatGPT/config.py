@@ -34,9 +34,7 @@ ULTRA_SUPER_SUPER_LARGE_LARGE_CHATGPT_CONFIG = GPTConfig(block_size=8192, n_embd
 
 ## LLAMA 7B model configuration
 LLAMA_7B_CONFIG = GPTConfig(block_size=128, n_embd=384, n_heads=8, n_layer=10, vocab_size=64512)
+
+
 ## 0.3B
-GPT_FINAL_CONFIG = GPTConfig(block_size=256, n_embd=384, n_heads=8, n_layer=10, vocab_size=480001)
-
-
-
-UGAUGA_GPT_CONFIG = GPTConfig(block_size=64, n_embd=384, n_heads=12, n_layer=5, dropout=0.2, vocab_size=64512) 
+GPT_FINAL_CONFIG = GPTConfig(block_size=256, n_embd=384, n_heads=8, n_layer=20, vocab_size=64512)

@@ -212,7 +212,7 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
     return losses
 
 # Generate the sample.
-def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
+def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)
