@@ -17,7 +17,7 @@ def gunzip_bytes_obj(bytes_obj: bytes) -> str:
 if __name__ == "__main__":
     dirs_to_process = glob.glob("../../dataset/030.웹데이터 기반 한국어 말뭉치 데이터/01.데이터/1.Training/라벨링데이터/TL1/*/*.json")
 
-    dirs_to_process = random.sample(dirs_to_process, 10000)
+    # dirs_to_process = random.sample(dirs_to_process, 10000)
 
     print(f"{len(dirs_to_process)} Articles")
 
@@ -45,9 +45,9 @@ if __name__ == "__main__":
                     sentence = ""    
                 if "무단 전재 및 재배포 금지"  in sentence or "무단전재" in sentence or "저작권자ⓒ" in sentence: sentence=""
                 
-                sentence = re.sub(r"(\w+)+@\(이메일\)\sⓒ\s\(이메일\)", "", sentence)
-                sentence = re.sub(r"(\w+)+@", "", sentence)
-                sentence = re.sub(r"[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", sentence)
+                sentence = re.sub(r"(\w+)@\(이메일\)\sⓒ\s\(이메일\)", "", sentence)
+                sentence = re.sub(r"(\w+)@", "", sentence)
+                sentence = re.sub(r"[a-zA-Z0-9+-_.]@[a-zA-Z0-9-]\.[a-zA-Z0-9-.]", "", sentence)
                 sentence = re.sub(r"\([^)]*\)", "", sentence)
                 sentence = sentence.replace(",", "")
 
