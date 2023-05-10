@@ -151,7 +151,7 @@ class CoolDataset(Dataset):
             # with Pool(self.pool_size) as p:
             pool = Pool(self.pool_size)
             # pool.map(self.process, self.texts, chunksize=5)
-            tqdm.tqdm(pool.imap(self.process, self.texts), total=self.num_subsets, chunksize=10)
+            tqdm.tqdm(pool.imap(self.process, self.texts, chunksize=10), total=self.num_subsets)
             pool.close()
             pool.join()
             self.save_cache(self.cache_dir)
