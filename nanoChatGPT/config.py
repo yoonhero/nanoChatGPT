@@ -33,7 +33,6 @@ KOGPT_CONFIG = GPTConfig(block_size=2048, n_embd=4096, n_heads=16, n_layer=28, v
 ULTRA_SUPER_SUPER_LARGE_LARGE_CHATGPT_CONFIG = GPTConfig(block_size=8192, n_embd=1024, n_heads=64, n_layer=12, dropout=0.2, vocab_size=100000)
 
 ## LLAMA 7B model configuration
-LLAMA_7B_CONFIG = GPTConfig(block_size=128, n_embd=384, n_heads=8, n_layer=10, vocab_size=64512)
+LLAMA_7B_CONFIG = GPTConfig(block_size=128, n_embd=384, n_heads=8, n_layer=10, vocab_size=50007)
 
-
-GPT_FINAL_CONFIG = GPTConfig(block_size=256, n_embd=512, n_heads=8, n_layer=24, vocab_size=64512)
+GPT_FINAL_CONFIG = GPTConfig(block_size=256, n_embd=512, n_heads=8, n_layer=24, vocab_size=50007)

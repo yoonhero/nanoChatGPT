@@ -12,8 +12,7 @@ class Tokenizer:
         self.processor = SentencePieceProcessor(model_file=str(model_path))
         self.bos_id = self.processor.bos_id()
         self.eos_id = self.processor.eos_id()
-        # self.pad_id = self.processor.pad_id()
-        self.pad_id = 480001
+        self.pad_id = self.processor.pad_id()
 
     @property
     def vocab_size(self) -> int:
@@ -26,7 +25,6 @@ class Tokenizer:
         eos: bool = False,
         max_length: int = -1,
         pad: bool = False,
-        device: Optional[torch.device] = None
     ) -> torch.Tensor:
         tokens = self.processor.encode(string)
         if bos:
@@ -38,7 +36,8 @@ class Tokenizer:
         if pad and len(tokens) < max_length:
             tokens += [self.pad_id] * (max_length - len(tokens))
 
-        return torch.tensor(tokens, dtype=torch.int, device=device)
+        # return torch.tensor(tokens, dtype=torch.int, device=device)
+        return tokens
 
     def decode(self, tokens: torch.Tensor) -> str:
         return self.processor.decode(tokens.tolist())

@@ -10,9 +10,9 @@ from xml.etree.ElementTree import parse
 import numpy as np
 import tqdm
 from nanoChatGPT import device
-import utils 
 import os
-from multiprocessing import Pool
+
+from nanoChatGPT.tokenizer import Tokenizer
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -34,7 +34,6 @@ def merge_dataset(dataset_directories, result_dir:str):
     
     with gzip.open(result_dir, "wb") as f:
         np.save(f, result)
-
 
 def encode_from_texts(texts, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     tokens = []
@@ -60,7 +59,6 @@ def encode_from_texts(texts, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN
         tokens = np.concatenate((tokens, temp_tokens), axis=0) if len(tokens) != 0 else temp_tokens
 
     return tokens
-
 
 def encode_from_texts_v2(texts, tokenizer, block_size:int):
     tokens = []
@@ -121,7 +119,7 @@ class CoolDataset(Dataset):
     def __init__(
             self, 
             corpus_path:str, 
-            tokenizer:AutoTokenizer, 
+            tokenizer:Tokenizer, 
             from_cache:bool,
             cache_dir: str,
             block_size:int, 
@@ -139,21 +137,16 @@ class CoolDataset(Dataset):
         self.cache_dir = cache_dir
         self.pool_size = 4
 
+        tokens = []
         if not from_cache:
-            with gzip.open(corpus_path, 'rb') as f:
-                zipeed_texts = f.read()
-                texts = utils.gunzip_bytes_obj(zipeed_texts)
+            with open(corpus_path, "r", buffering=100000) as f:
+                for line in tqdm.tqdm(f, desc="Loading Corpus Line by Line"):
+                    token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
+                    tokens.append(token)
 
-            self.texts = texts.split("\n\n===\n\n")
-            self.num_subsets = len(self.texts)
-
-            self.tokens = []
-            # with Pool(self.pool_size) as p:
-            pool = Pool(self.pool_size)
-            # pool.map(self.process, self.texts, chunksize=5)
-            tqdm.tqdm(pool.imap(self.process, self.texts, chunksize=10), total=self.num_subsets)
-            pool.close()
-            pool.join()
+            self.num_subsets = len(tokens)
+            self.tokens = np.array(tokens, dtype=np.int64)
+            del tokens
             self.save_cache(self.cache_dir)
 
         else:
@@ -164,22 +157,6 @@ class CoolDataset(Dataset):
 
     def __len__(self):
         return self.num_subsets
-
-    def _collate_fn(self, text):
-        encoded_text = self.tokenizer.encode(text)
-        temp_tokens = np.array(encoded_text, dtype=np.int64)
-        return temp_tokens
-    
-    def process(self, text):
-        text = f"{self.BOS_TOKEN} {text} {self.EOS_TOKEN}" 
-        token = self._collate_fn(text)
-
-        if len(token) < self.block_size+1:
-            token = np.pad(token, (0, self.block_size - len(token) + 1), 'constant', constant_values=(0,self.tokenizer.encode("[PAD]")))
-
-        token = token[:self.block_size+1]
-        token = np.expand_dims(token, axis=0)
-        self.tokens = np.concatenate((self.tokens, token), axis=0) if len(self.tokens) != 0 else token
 
     def save_cache(self, cache_destination):
         with gzip.open(cache_destination, "wb") as f:

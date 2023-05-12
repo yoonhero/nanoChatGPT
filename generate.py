@@ -1,18 +1,18 @@
 # import tiktoken
 import torch
 import argparse
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
 
 import utils as utils
 import nanoChatGPT.config as CONFIG
 from nanoChatGPT.tokenizer import Tokenizer
 
-# KoGPT Tokenizer
-enc = AutoTokenizer.from_pretrained(
-  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
-  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
-)
-# enc = Tokenizer("./tokenizer/tokenizer.model")
+# # KoGPT Tokenizer
+# enc = AutoTokenizer.from_pretrained(
+#   'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+#   bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+# )
+enc = Tokenizer("./tokenizer/tokenizer.model")
 encode = lambda x: enc.encode(x, bos=True)
 decode = lambda x: enc.decode(x)
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_tokens", type=int, default=1000)
     parser.add_argument("--path", type=str, default=CONFIG.TRAINING_OUTPUT_DIR)
     parser.add_argument("--start", type=str, default="")
-    parser.add_argument("--model_size", type=str, default="LLAMA")
+    parser.add_argument("--model_size", type=str, default="BASIC")
 
     args = parser.parse_args()
 
