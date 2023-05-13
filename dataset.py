@@ -138,10 +138,11 @@ class CoolDataset(Dataset):
 
         tokens = []
         if not from_cache:
+            num_lines = sum(1 for line in open(corpus_path,'r', buffering=100000))
             start = time.time()
             with open(corpus_path, "r", buffering=100000) as f:
                 print("Loading Corpus Line by Line and Tokenizing")
-                for line in tqdm.tqdm(f):
+                for line in tqdm.tqdm(f, total=num_lines):
                     token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
                     tokens.append(token)
 
