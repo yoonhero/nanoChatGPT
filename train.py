@@ -143,7 +143,7 @@ def main(args):
         is_wandb=is_wandb
     )    
 
-def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
     scaler = torch.cuda.amp.GradScaler()
     losses = np.zeros(max_epoch)
 
@@ -209,7 +209,7 @@ def train(model: torch.nn.Module, tokenizer: AutoTokenizer, optimizer: torch.opt
     return losses
 
 # Generate the sample.
-def sample(tokenizer: AutoTokenizer, model: torch.nn.Module) -> None:
+def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)

@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import Dataset
 import gzip
 import numpy as np
-from transformers import AutoTokenizer
 from xml.etree.ElementTree import parse
 import numpy as np
 import tqdm
@@ -35,7 +34,7 @@ def merge_dataset(dataset_directories, result_dir:str):
     with gzip.open(result_dir, "wb") as f:
         np.save(f, result)
 
-def encode_from_texts(texts, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
+def encode_from_texts(texts, tokenizer: Tokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     tokens = []
     pbar = tqdm.tqdm(
         texts,
@@ -90,7 +89,7 @@ def read_text_from_xml(xml_dir:str):
         return text
     except: return ''
 
-def encode_text_from_xml(folder_dir: str, tokenizer: AutoTokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
+def encode_text_from_xml(folder_dir: str, tokenizer: Tokenizer, block_size:int, BOS_TOKEN:str, EOS_TOKEN:str):
     assert folder_dir[-1] != "/", "Check the directory please."
     xml_file_directories = glob.glob(f"{folder_dir}/*")
 
@@ -105,7 +104,7 @@ def read_text_from_txt(txt_dir: str, encoding):
         texts = f.read()
     return texts
 
-def encode_text_from_txt(folder_dir: str, tokenizer: AutoTokenizer, block_size: int, encoding):
+def encode_text_from_txt(folder_dir: str, tokenizer: Tokenizer, block_size: int, encoding):
     assert folder_dir[-1] != "/", "Check the directory please."
     txt_file_directories = glob.glob(f"{folder_dir}/*")
 
@@ -177,7 +176,7 @@ class TokenedDataset(Dataset):
     def __init__(
             self, 
             file_path:str, 
-            tokenizer:AutoTokenizer, 
+            tokenizer:Tokenizer, 
             block_size:int, 
             EOS_TOKEN:str,
             BOS_TOKEN:str,
