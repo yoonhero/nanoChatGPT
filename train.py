@@ -4,7 +4,7 @@ import argparse
 from torch.utils.data import random_split, DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 import os
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
 import tqdm
 import math
 import numpy as np
@@ -14,7 +14,8 @@ import logging
 from nanoChatGPT import GPT
 import utils 
 import nanoChatGPT.config as CONFIG
-from dataset import TokenedDataset, CoolDataset
+from dataset import CoolDataset
+from nanoChatGPT.tokenizer import Tokenizer
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('[%(asctime)s] [%(levelname)s | %(filename)s : %(lineno)s] >> %(message)s')
@@ -80,7 +81,8 @@ def main(args):
     PAD_TOKEN = "[PAD]"
     MASK_TOKEN = "[MASK]"
 
-    tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
+    # tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
+    tokenizer = Tokenizer("./tokenizer/vocab.model")
 
     config = utils.getModelConfig(args.model_size)
     print(args.model_size)
