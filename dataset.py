@@ -9,11 +9,11 @@ from xml.etree.ElementTree import parse
 import numpy as np
 import tqdm
 from nanoChatGPT import device
-import os
+import time
 
 from nanoChatGPT.tokenizer import Tokenizer
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def merge_dataset(dataset_directories, result_dir:str):
     datasets = glob.glob(f"{dataset_directories}/*.gz")
@@ -138,10 +138,14 @@ class CoolDataset(Dataset):
 
         tokens = []
         if not from_cache:
+            start = time.time()
             with open(corpus_path, "r", buffering=100000) as f:
-                for line in tqdm.tqdm(f, desc="Loading Corpus Line by Line"):
+                print("Loading Corpus Line by Line and Tokenizing")
+                for line in tqdm.tqdm(f):
                     token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
                     tokens.append(token)
+
+            print(f"Loading Done in {time.time() - start:.4f}s")
 
             self.num_subsets = len(tokens)
             self.tokens = np.array(tokens, dtype=np.int64)

@@ -12,7 +12,7 @@ from nanoChatGPT.tokenizer import Tokenizer
 #   'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
 #   bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
 # )
-enc = Tokenizer("./tokenizer/tokenizer.model")
+enc = Tokenizer("./tokenizer/corpus.model")
 encode = lambda x: enc.encode(x, bos=True)
 decode = lambda x: enc.decode(x)
 

@@ -1,6 +1,4 @@
 wandb
-transformers~=4.28.1
-tokenizers
 torchmetrics
 sentencepiece~=0.1.99
 
