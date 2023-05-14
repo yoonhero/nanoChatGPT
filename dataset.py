@@ -10,8 +10,10 @@ import numpy as np
 import tqdm
 from nanoChatGPT import device
 import time
+from ast import literal_eval
 
 from nanoChatGPT.tokenizer import Tokenizer
+import utils
 
 # os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -122,54 +124,81 @@ class CoolDataset(Dataset):
             from_cache:bool,
             cache_dir: str,
             block_size:int, 
-            EOS_TOKEN:str,
-            BOS_TOKEN:str,
             device="cuda",
+            save_cache: bool=False
         ):
         self.device = device
         self.block_size = block_size
-        self.EOS_TOKEN = EOS_TOKEN
-        self.BOS_TOKEN = BOS_TOKEN
 
         self.tokenizer = tokenizer
 
         self.cache_dir = cache_dir
         self.pool_size = 4
 
-        tokens = []
+        self.from_cache = from_cache
+        self.save_cache = save_cache
+
+        # self.tokens = []
+        texts = []
         if not from_cache:
             num_lines = sum(1 for line in open(corpus_path,'r', buffering=100000))
             start = time.time()
             with open(corpus_path, "r", buffering=100000) as f:
                 print("Loading Corpus Line by Line and Tokenizing")
                 for line in tqdm.tqdm(f, total=num_lines):
-                    token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
-                    tokens.append(token)
+                    # token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
+                    # self.tokens.append(token)
+                    if len(texts) >1000:break
+                    texts.append(line)
 
             print(f"Loading Done in {time.time() - start:.4f}s")
+            self.texts = pd.Series(texts)
+            self.num_subsets = len(self.texts)
 
-            self.num_subsets = len(tokens)
-            self.tokens = np.array(tokens, dtype=np.int64)
-            del tokens
-            self.save_cache(self.cache_dir)
+            if save_cache:
+                # self.tokens = np.array(tokens, dtype=np.int64)
+                self.tokens = self.texts.apply(lambda text: self._collate_fn(text))
+                del self.texts
+                self._save_cache(self.cache_dir)
 
         else:
-            f = gzip.GzipFile(self.cache_dir, "r")
-            self.tokens = np.load(f)
-            self.num_subsets = self.tokens.shape[0]
-            return
+            # f = gzip.GzipFile(self.cache_dir, "r")
+            # self.tokens = np.load(f)
+            df_chunk = pd.read_csv(self.cache_dir, converters={"0": literal_eval}, chunksize=1000000, index_col=False, header=0)
+            chunk_list = []  
+            for chunk in df_chunk:  
+                chunk_list.append(chunk)
+            
+            self.tokens = pd.concat(chunk_list).transpose()[0]
+
+            self.num_subsets = len(self.tokens)
+        
 
     def __len__(self):
         return self.num_subsets
 
-    def save_cache(self, cache_destination):
-        with gzip.open(cache_destination, "wb") as f:
-            np.save(f, self.tokens)
+    @utils.profile
+    def _save_cache(self, cache_destination):
+        # with gzip.open(cache_destination, "wb") as f:
+        #     np.save(f, self.tokens)
+        self.tokens.to_csv(cache_destination, index=False)
 
+    # @utils.profile
+    def _collate_fn(self, text):
+        token = self.tokenizer.encode(text, bos=True, eos=True, max_length=self.block_size+1, pad=True)
+        return token
+
+    # @utils.profile
     def __getitem__(self, idx): 
-        token = self.tokens[idx]
-        x = torch.as_tensor(token[:-1], dtype=torch.long, device=self.device)
-        y = torch.as_tensor(token[1:], dtype=torch.long, device=self.device)
+        token = []
+        if self.from_cache or self.save_cache:
+            token = self.tokens.iloc[idx]
+        else:
+            text = self.texts.iloc[idx]
+            token = self._collate_fn(text)
+            
+        x = torch.tensor(token[:-1], dtype=torch.long, device=self.device)
+        y = torch.tensor(token[1:], dtype=torch.long, device=self.device)
 
         return x, y
 
@@ -284,14 +313,14 @@ def old_create_dataset():
 
 if __name__ == '__main__':
     # create_dataset()
-    tokenizer = AutoTokenizer.from_pretrained(
-    'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
-    bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
-    )
+    # tokenizer = AutoTokenizer.from_pretrained(
+    # 'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+    # bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+    # )
     # encode_text_from_xml("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128)
-        
-    dataset = TokenedDataset("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128, save_cache=True, BOS_TOKEN="[BOS]", EOS_TOKEN="[EOS]")
+    tokenizer = Tokenizer("./tokenizer/corpus.model")
+    dataset = CoolDataset("./tmp/corpus.txt", tokenizer=tokenizer, block_size=128, from_cache=True, cache_dir="./tmp/cache.csv", device="cpu", save_cache=True)
     print(dataset[0])
-    print(dataset[10])
+
             
         

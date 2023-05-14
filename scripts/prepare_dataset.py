@@ -52,7 +52,7 @@ def process_file(dir):
 
             if len(paragraph) >= block_size:
                 f.write(paragraph.encode("utf-8"))
-                f.write("\n\n===\n\n".encode("utf-8"))
+                f.write("\n".encode("utf-8"))
 
 if __name__ == "__main__":
     dirs_to_process = glob.glob("../../030.웹데이터 기반 한국어 말뭉치 데이터/01.데이터/1.Training/라벨링데이터/TL1/*/*.json")
