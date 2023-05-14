@@ -1,6 +1,6 @@
 import gzip
 
-import utils
+import ..utils
 
 texts = ""
 
