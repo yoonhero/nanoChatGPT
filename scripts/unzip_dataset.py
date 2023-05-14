@@ -1,10 +1,10 @@
 import gzip
 
-import ..utils
+from ..utils import profile
 
 texts = ""
 
-@utils.profile
+@profile
 def loading():
     global texts
     with gzip.open("./tmp/corpus.txt", 'rb') as f:
@@ -14,7 +14,7 @@ def loading():
 
 texts = texts.replace("\n\n===\n\n", "\n")
 
-@utils.profile
+@profile
 def write():
     global texts
     with open("./tmp/corpus.txt", "w") as f:
