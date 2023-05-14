@@ -76,7 +76,7 @@ def main():
     )
 
     fabric = L.Fabric(
-        accelerator="cuda", devices=devices, precision="bf16-mixed", strategy=strategy
+        accelerator="cuda", devices=devices, precision=16, strategy=strategy
     )
     fabric.launch()
     fabric.seed_everything(12499489)
@@ -277,7 +277,6 @@ def get_lr(it):
 if __name__ == "__main__":
      # Set Up seed.
     utils.set_seed()
-    torch.multiprocessing.set_start_method('spawn')
     torch.set_float32_matmul_precision("high")
 
     main()
