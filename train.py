@@ -30,11 +30,17 @@ def mask_tensor_random_pos(x):
     masked_x = torch.where(mask, torch.tensor(0.), x)
     return masked_x
 
-warmup_iters = 200 # how many steps to warm up for
-lr_decay_iters = 6000 
+learning_rate = 6e-4
+batch_size = 64
+micro_batch_size = 5
+max_iters = 1000000
+grad_clip = 1.0
+decay_lr = True
+warmup_iters = 2000
+lr_decay_iters = max_iters
 min_lr = 6e-5
 # learning rate decay scheduler (cosine with warmup)
-def get_lr(it: int, learning_rate: float) -> float:
+def get_lr(it):
     # 1) linear warmup for warmup_iters steps
     if it < warmup_iters:
         return learning_rate * it / warmup_iters
@@ -44,7 +50,7 @@ def get_lr(it: int, learning_rate: float) -> float:
     # 3) in between, use cosine decay down to min learning rate
     decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
     assert 0 <= decay_ratio <= 1
-    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
     return min_lr + coeff * (learning_rate - min_lr)
 
 
@@ -138,29 +144,28 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
     for iter in range(start_epoch, start_epoch+max_epoch):
         t0 = time.time()
 
-        # every once in a while evaluate the loss on train and val sets
-        # lr = get_lr(iter, learning_rate=learning_rate) if with_lr_scheduler else learning_rate 
-        lr = learning_rate
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
-
         # Logging the losses.
         _losses = []
 
         pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch+start_epoch}")
         for step, (x, y) in enumerate(pbar):
+            iter_num = iter * len(train_loader) + step + 1
+
+            # determine and set the learning rate for this iteration
+            lr = get_lr(iter_num) if decay_lr else learning_rate
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = lr
+
             # evaluate the loss
             # masked_x = mask_tensor_random_pos(x)
-            # _, loss = model(masked_x, y)
             _, loss = model(x, y)
             _losses.append(loss.item())
 
-            scaler.scale(loss).backward()
+            scaler.scale(loss/gradient_accumulation_interval).backward()
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
                 # Gradient Clipping for Efficient Learning
-                # max_norm = 5
-                # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
 
                 scaler.step(optimizer)
                 scaler.update()
@@ -188,6 +193,9 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
         # Save the every save interval
         if (iter-start_epoch+1) % save_interval == 0:
             utils.save_model(iter+1, model, optimizer, output_dir)
+
+        if iter_num > max_iters:
+            break 
 
     # finish wandb
     if is_wandb:
