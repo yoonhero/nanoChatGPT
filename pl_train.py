@@ -76,7 +76,7 @@ def main():
     )
 
     fabric = L.Fabric(
-        accelerator="cuda", devices=devices, precision=16, strategy=strategy, plugins="deepspeed_stage_3_offload"
+        accelerator="cuda", devices=devices, precision=16, strategy=strategy
     )
     fabric.launch()
     fabric.seed_everything(12499489)
@@ -253,8 +253,8 @@ def create_dataloader(config):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True,shuffle=False, pin_memory=True, generator=g)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False, pin_memory=True, generator=g)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True,shuffle=False, generator=g)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False,  generator=g)
     logger.info("Finishing Loading the Dataset.")
     return train_loader, val_loader
 
