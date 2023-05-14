@@ -94,7 +94,7 @@ def main(args):
         model, optimizer, _ = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
-        model = GPT(config).to(CONFIG.device)
+        model = GPT(config)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=1e-1)
 
     if is_torch_2:
