@@ -68,20 +68,10 @@ def main(args):
 
     # Using Advanced code for speed up traning.
     is_torch_2 = int(torch.__version__[0]) >= 2
-
     # Set Up seed.
     utils.set_seed()
-
     torch.multiprocessing.set_start_method('spawn')
     
-    # KoGPT Tokenizer
-    BOS_TOKEN = "[BOS]"
-    EOS_TOKEN = "[EOS]"
-    UNK_TOKEN = "[UNK]"
-    PAD_TOKEN = "[PAD]"
-    MASK_TOKEN = "[MASK]"
-
-    # tokenizer = AutoTokenizer.from_pretrained('kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16', bos_token=BOS_TOKEN, eos_token=EOS_TOKEN, unk_token=UNK_TOKEN, pad_token=PAD_TOKEN, mask_token=MASK_TOKEN)
     tokenizer = Tokenizer("./tokenizer/corpus.model")
 
     config = utils.getModelConfig(args.model_size)
@@ -109,8 +99,6 @@ def main(args):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=torch.cuda.device_count()*4)
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True, num_workers=torch.cuda.device_count()*4)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
     logger.info("Finishing Loading the Dataset.")

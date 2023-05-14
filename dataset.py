@@ -148,7 +148,7 @@ class CoolDataset(Dataset):
                 for line in tqdm.tqdm(f, total=num_lines):
                     # token = self.tokenizer.encode(line, bos=True, eos=True, max_length=self.block_size+1, pad=True)
                     # self.tokens.append(token)
-                    if len(texts) >1000:break
+                    # if len(texts) >1000:break
                     texts.append(line)
 
             print(f"Loading Done in {time.time() - start:.4f}s")
@@ -196,7 +196,7 @@ class CoolDataset(Dataset):
         else:
             text = self.texts.iloc[idx]
             token = self._collate_fn(text)
-            
+
         x = torch.tensor(token[:-1], dtype=torch.long, device=self.device)
         y = torch.tensor(token[1:], dtype=torch.long, device=self.device)
 
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     # )
     # encode_text_from_xml("./dataset/NIKL_NP_v1.2/malmungchi", tokenizer=tokenizer, block_size=128)
     tokenizer = Tokenizer("./tokenizer/corpus.model")
-    dataset = CoolDataset("./tmp/corpus.txt", tokenizer=tokenizer, block_size=128, from_cache=True, cache_dir="./tmp/cache.csv", device="cpu", save_cache=True)
+    dataset = CoolDataset("./tmp/corpus.txt", tokenizer=tokenizer, block_size=128, from_cache=False, cache_dir="./tmp/cache.csv", save_cache=True)
     print(dataset[0])
 
             
