@@ -5,3 +5,4 @@ tqdm~=4.65.0
 torch~=2.0.1
 numpy~=1.24.3
 llightning @ git+https://github.com/Lightning-AI/lightning@master
+deepspeed

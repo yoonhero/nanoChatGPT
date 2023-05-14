@@ -38,7 +38,7 @@ eval_iters = 100
 log_interval = 1
 is_wandb = False
 
-compile = True
+compile = False
 
 # Hyperparameters
 model_size = "BASIC"
@@ -154,7 +154,7 @@ def train(
     tokens_sec = 0.0
     prev_t1 = time.time()
 
-    for iter_num, train_data in enumerate(tqdm.tqdm(train_dataloader)):
+    for iter_num, (input_ids, targets) in enumerate(tqdm.tqdm(train_dataloader)):
         t0 = time.time()
 
         # determine and set the learning rate for this iteration
@@ -162,17 +162,11 @@ def train(
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
-
-        input_ids = train_data[:, 0 : model.config.block_size].contiguous()
-        targets = train_data[:, 1 : model.config.block_size + 1].contiguous()
-        
         is_accumulating = (iter_num + 1) % grad_accum_steps != 0
 
         with fabric.no_backward_sync(model, enabled=is_accumulating):
-            logits = model(input_ids)
-            loss = torch.nn.functional.cross_entropy(
-                logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1
-            )
+            _, loss = model(input_ids, targets)
+           
             fabric.backward(loss / grad_accum_steps)
 
         t1 = time.time()
@@ -196,7 +190,7 @@ def train(
 
             if step_count % save_interval == 0:
                 fabric.print(f"Saving checkpoint to {out_dir}")
-                utils.save_model(
+                utils.save_model_checkpoint(
                     fabric, model, os.path.join(out_dir, f"iter-{iter_num:06d}-ckpt.pth")
                 )
 
