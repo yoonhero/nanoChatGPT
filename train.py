@@ -195,7 +195,7 @@ def sample(model: torch.nn.Module) -> None:
 
 
 def create_dataloader(args, config):
-    g = torch.Generator(device=CONFIG.device)
+    g = torch.Generator()
     g.manual_seed(12499489)
 
     batch_size = args.batch_size
