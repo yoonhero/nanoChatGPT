@@ -1,45 +1,34 @@
 import gzip
 
-import cProfile
-import io
-import pstats
-from pstats import SortKey
+import gzip
 
-def profile(func):
-    def wrapper(*args, **kwargs):
-        pr = cProfile.Profile()
-        pr.enable()
-        retval = func(*args, **kwargs)
-        pr.disable()
-        s = io.StringIO()
-        sortby = SortKey.CUMULATIVE  # 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        return retval
+def gunzip_bytes_obj(bytes_obj: bytes) -> str:
+    return gzip.decompress(bytes_obj).decode()
 
-    return wrapper
 
-texts = ""
 
-@profile
-def loading():
-    global texts
-    with open("./tmp/corpus.txt", 'rb') as f:
-        # zipeed_texts = f.read()
-        for line in f:
-            # texts = f.read()
-            if texts not in ["\n", "==="]:
-                # texts += line.strip()
-                texts += line
-    # texts = utils.gunzip_bytes_obj(zipeed_texts)
-# texts = texts.replace("\n\n===\n\n", "\n")
+# @utils.profile
+# def loading():
+#     global texts
+#     with gzip.open("./dataset/corpus.txt.gz", 'rb') as f:
+#         zipeed_texts = f.read()
+#     texts = utils.gunzip_bytes_obj(zipeed_texts)
 
-@profile
-def write():
-    global texts
-    with open("./tmp/corpus.txt", "w") as f:
-        f.write(texts)
+# @utils.profile
+# def write():
+#     with open("./tmp/corpus.txt", "w") as f:
+#         f.write(texts)
 
-loading()
-write()
+# loading()
+# write()
+
+with gzip.open("./dataset/corpus.txt.gz", 'rb') as f:
+    zipeed_texts = f.read()
+texts = gunzip_bytes_obj(zipeed_texts)
+
+texts = texts.replace("\n\n===\n\n", "\n")
+
+with open("./tmp/corpus.txt", "w") as f:
+    f.write(texts)
+
+
