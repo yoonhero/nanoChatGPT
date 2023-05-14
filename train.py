@@ -94,7 +94,7 @@ def main(args):
         model, optimizer, _ = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
-        model = GPT(config)
+        model = GPT(config).to(CONFIG.device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=1e-1)
 
     if is_torch_2:
@@ -195,7 +195,7 @@ def sample(model: torch.nn.Module) -> None:
 
 
 def create_dataloader(args, config):
-    g = torch.Generator()
+    g = torch.Generator(device=CONFIG.device)
     g.manual_seed(12499489)
 
     batch_size = args.batch_size
