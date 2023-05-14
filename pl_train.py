@@ -76,7 +76,7 @@ def main():
     )
 
     fabric = L.Fabric(
-        accelerator="cuda", devices=devices, precision=16, strategy=strategy
+        accelerator="cuda", devices=devices, precision=16, strategy=strategy, plugins="deepspeed_stage_3_offload"
     )
     fabric.launch()
     fabric.seed_everything(12499489)

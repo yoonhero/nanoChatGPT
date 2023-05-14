@@ -162,8 +162,8 @@ class CasualAttention(nn.Module):
             self.attn_dropout = nn.Dropout(self.dropout)
             self.resid_drop = nn.Dropout(self.dropout)
 
-        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
-                                        .view(1, 1, config.block_size, config.block_size))
+        # self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
+        #                                 .view(1, 1, config.block_size, config.block_size))
 
     def forward(self, x):
         B, T, C = x.size()
