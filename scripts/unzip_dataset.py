@@ -27,10 +27,13 @@ def loading():
     global texts
     with open("./tmp/corpus.txt", 'rb') as f:
         # zipeed_texts = f.read()
-        texts = f.read()
+        for line in f:
+            # texts = f.read()
+            if texts not in ["\n", "==="]:
+                # texts += line.strip()
+                texts += line
     # texts = utils.gunzip_bytes_obj(zipeed_texts)
-
-texts = texts.replace("\n\n===\n\n", "\n")
+# texts = texts.replace("\n\n===\n\n", "\n")
 
 @profile
 def write():
