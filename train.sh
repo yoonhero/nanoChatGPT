@@ -5,4 +5,4 @@
 # torchrun train.py --batch_size=128 --max_epoch=100 --eval_interval=10 --save_interval=5 --gradient_accumulation_interval=2 --output_dir=/content/drive/MyDrive/tmp/checkpoints/ --model_size=LLAMA --with_lr_scheduler --from_cache --cache_directory=/content/drive/MyDrive/corpus.tar.gz
 
 
-python train.py --batch_size=64 --max_epoch=100 --eval_interval=1000 --save_interval=1000 --gradient_accumulation_interval=2 --output_dir=tmp/checkpoints/ --model_size=BASIC --dataset_path=tmp/corpus.txt --cache_directory=dataset/tokenized_corpus.tar.gz
+python train.py --batch_size=64 --max_epoch=100 --eval_interval=1000 --save_interval=1000 --gradient_accumulation_interval=2 --output_dir=tmp/checkpoints/ --model_size=BASIC --dataset_path=tmp/corpus.txt --cache_directory=dataset/tokenized_corpus.tar.gz --with_lr_scheduler

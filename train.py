@@ -140,17 +140,19 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
         for step, (x, y) in enumerate(pbar):
             iter_num = iter * len(train_loader) + step + 1
 
-            # determine and set the learning rate for this iteration
-            lr = get_lr(iter_num) if decay_lr else learning_rate
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = lr
+            if with_lr_scheduler:
+                # determine and set the learning rate for this iteration
+                lr = get_lr(iter_num) if decay_lr else learning_rate
+                for param_group in optimizer.param_groups:
+                    param_group["lr"] = lr
 
-            # evaluate the loss
-            # masked_x = mask_tensor_random_pos(x)
-            _, loss = model(x, y)
-            _losses.append(loss.item())
+            with torch.cuda.amp.autocast():
+                # evaluate the loss
+                # masked_x = mask_tensor_random_pos(x)
+                _, loss = model(x, y)
+                _losses.append(loss.item())
 
-            scaler.scale(loss/gradient_accumulation_interval).backward()
+            scaler.scale(loss).backward()
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
                 # Gradient Clipping for Efficient Learning
