@@ -25,7 +25,7 @@ texts = ""
 @profile
 def loading():
     global texts
-    with gzip.open("./tmp/corpus.txt", 'rb') as f:
+    with open("./tmp/corpus.txt", 'rb') as f:
         # zipeed_texts = f.read()
         texts = f.read()
     # texts = utils.gunzip_bytes_obj(zipeed_texts)
