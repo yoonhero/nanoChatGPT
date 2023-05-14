@@ -146,13 +146,7 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
-                if is_wandb:
-                    import wandb
-                    wandb.log({
-                        "iter": iter_num,
-                        "train/loss": f"{loss.item():6f}",
-                        "lr": lr
-                    })
+                logger.info(f"ITER {iter_num}: train loss {loss.item():.4f}")
             
             if iter_num % eval_interval == 0:
                 estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
@@ -162,6 +156,14 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
             if iter_num % save_interval == 0:
                 utils.save_model(iter_num+1, model, optimizer, output_dir)
 
+            if is_wandb:
+                import wandb
+                wandb.log({
+                    "iter": iter_num,
+                    "train/loss": f"{loss.item():.6f}",
+                    "lr": lr
+                })
+                    
         dt = time.time() - t0
 
         sample(model)
@@ -206,7 +208,7 @@ def create_dataloader(args, config):
     
     dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, device=CONFIG.device, save_cache=save_cache)
     total_size = len(dataset)
-    train_size = int(0.99*total_size)
+    train_size = int(0.98*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)
