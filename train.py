@@ -178,7 +178,7 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
         losses[iter] = mean_loss
         logger.info(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
 
-        if (iter-start_epoch) % eval_interval == 0:
+        if iter_num % eval_interval == 0:
             estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
             logger.info(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
 
@@ -191,7 +191,7 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
             })
 
         # Save the every save interval
-        if (iter-start_epoch+1) % save_interval == 0:
+        if iter_num % save_interval == 0:
             utils.save_model(iter+1, model, optimizer, output_dir)
 
         if iter_num > max_iters:
