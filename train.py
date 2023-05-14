@@ -2,9 +2,7 @@ import torch
 import torch.optim as optim
 import argparse
 from torch.utils.data import random_split, DataLoader
-import torch.optim.lr_scheduler as lr_scheduler
 import os
-# from transformers import AutoTokenizer
 import tqdm
 import math
 import numpy as np
@@ -57,7 +55,6 @@ def get_lr(it):
 
 
 def main(args):
-    batch_size = args.batch_size
     max_epoch = args.max_epoch
     learning_rate = args.learning_rate
     eval_interval = args.eval_interval
@@ -67,14 +64,8 @@ def main(args):
     load = args.load_model
     is_wandb = args.wandb
     with_lr_scheduler = args.with_lr_scheduler
-    encoding = args.encoding
-    load_mode = args.load_mode
-    dataset_path = args.dataset_path
-    from_cache = args.from_cache
-    save_cache = args.save_cache
-    cache_directory = args.cache_directory
 
-    # Using Advanced code for speed up traning.
+    # Using Optimized Torch Code for speed up traning.
     is_torch_2 = int(torch.__version__[0]) >= 2
     
     config = utils.getModelConfig(args.model_size)
@@ -100,12 +91,11 @@ def main(args):
     train_loader, val_loader = create_dataloader(args, config)
 
     if load:
-        model, optimizer, start_epoch = utils.load_model(output_dir, config, best=True)
+        model, optimizer, _ = utils.load_model(output_dir, config, best=True)
     else: 
         os.makedirs(output_dir, exist_ok=True)
         model = GPT(config).to(CONFIG.device)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.95), weight_decay=1e-1)
-        start_epoch = 0
 
     if is_torch_2:
         model = torch.compile(model)
@@ -116,7 +106,6 @@ def main(args):
         train_loader=train_loader, 
         val_loader=val_loader, 
         output_dir=output_dir, 
-        start_epoch=start_epoch, 
         max_epoch=max_epoch, 
         gradient_accumulation_interval=gradient_accumulation_interval, 
         eval_interval=eval_interval, 
@@ -126,64 +115,59 @@ def main(args):
         is_wandb=is_wandb
     )    
 
-def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
     scaler = torch.cuda.amp.GradScaler()
     losses = np.zeros(max_epoch)
 
-    for iter in range(start_epoch, start_epoch+max_epoch):
+    for iter in range(max_epoch):
         t0 = time.time()
-
-        # Logging the losses.
         _losses = []
+        lr = learning_rate
 
-        pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch+start_epoch}")
+        pbar = tqdm.tqdm(train_loader, desc=f"Epoch {iter+1}/"+f"{max_epoch}")
         for step, (x, y) in enumerate(pbar):
             iter_num = iter * len(train_loader) + step + 1
 
             if with_lr_scheduler:
-                # determine and set the learning rate for this iteration
                 lr = get_lr(iter_num) if decay_lr else learning_rate
                 for param_group in optimizer.param_groups:
                     param_group["lr"] = lr
 
             with torch.cuda.amp.autocast():
-                # evaluate the loss
-                # masked_x = mask_tensor_random_pos(x)
                 _, loss = model(x, y)
                 _losses.append(loss.item())
 
             scaler.scale(loss).backward()
 
             if (step+1) % gradient_accumulation_interval == 0 or (step+1) == len(train_loader):
-                # Gradient Clipping for Efficient Learning
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
 
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
+                if is_wandb:
+                    import wandb
+                    wandb.log({
+                        "iter": iter_num,
+                        "train/loss": f"{loss.item():6f}",
+                        "lr": lr
+                    })
+            
+            if iter_num % eval_interval == 0:
+                estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
+                logger.info(f"EPOCH {iter_num}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
+
+            # Save the every save interval
+            if iter_num % save_interval == 0:
+                utils.save_model(iter_num+1, model, optimizer, output_dir)
+
         dt = time.time() - t0
 
         sample(model)
-        mean_loss = utils.mean(_losses)
-        losses[iter] = mean_loss
-        logger.info(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
-
-        if iter_num % eval_interval == 0:
-            estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
-            logger.info(f"EPOCH {iter+1}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
-
-        elif is_wandb:
-            import wandb
-            wandb.log({
-                "iter": iter,
-                "train/loss": mean_loss,
-                "lr": learning_rate
-            })
-
-        # Save the every save interval
-        if iter_num % save_interval == 0:
-            utils.save_model(iter+1, model, optimizer, output_dir)
+        # mean_loss = utils.mean(_losses)
+        # losses[iter] = mean_loss
+        logger.info(f"Epoch: {iter+1} | Loss: {_losses[-1]} | Time: {dt*1000:.2f}ms")
 
         if iter_num > max_iters:
             break 
@@ -197,13 +181,12 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
 
 # Generate the sample.
 def sample(model: torch.nn.Module) -> None:
-    decode = lambda x: tokenizer.decode(x)
-    start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
-    result = tokenizer.encode(start_tokens)
-    context = torch.tensor(result, device=CONFIG.device, dtype=torch.long)
+    input_texts = "[BOS] 세상을 바꾸는 것은 누구일까?"
+    tokens = tokenizer.encode(input_texts, bos=True)
+    context = torch.tensor(tokens, device=CONFIG.device, dtype=torch.long)
     context = context.unsqueeze(0)
-    result = model.generate(context, max_new_tokens=100)[0].tolist()
-    result = decode(result)
+    result = model.generate(context, max_new_tokens=100)
+    result = tokenizer.decode(result[0])
 
     with open('result.txt', "w") as f:
         logger.info(result)
@@ -226,8 +209,8 @@ def create_dataloader(args, config):
     train_size = int(0.8*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True,shuffle=False, generator=g)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False,  generator=g)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False, num_workers=4, generator=g)
     logger.info("Finishing Loading the Dataset.")
     return train_loader, val_loader
 
@@ -235,6 +218,7 @@ def create_dataloader(args, config):
 if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")
     utils.set_seed()
+    torch.set_default_device('cuda')
     # torch.multiprocessing.set_start_method('spawn')
 
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
