@@ -30,6 +30,8 @@ def mask_tensor_random_pos(x):
     masked_x = torch.where(mask, torch.tensor(0.), x)
     return masked_x
 
+tokenizer = Tokenizer("./tokenizer/corpus.model")
+
 learning_rate = 6e-4
 batch_size = 64
 micro_batch_size = 5
@@ -74,12 +76,7 @@ def main(args):
 
     # Using Advanced code for speed up traning.
     is_torch_2 = int(torch.__version__[0]) >= 2
-    # Set Up seed.
-    utils.set_seed()
-    torch.multiprocessing.set_start_method('spawn')
     
-    tokenizer = Tokenizer("./tokenizer/corpus.model")
-
     config = utils.getModelConfig(args.model_size)
     print(args.model_size)
 
@@ -100,14 +97,7 @@ def main(args):
         )
         logger.info("Initiate the WANDB.")
 
-    dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, device=CONFIG.device)
-    total_size = len(dataset)
-    train_size = int(0.8*total_size)
-    val_size = total_size - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True)
-    logger.info("Finishing Loading the Dataset.")
+    train_loader, val_loader = create_dataloader(args, config)
 
     if load:
         model, optimizer, start_epoch = utils.load_model(output_dir, config, best=True)
@@ -122,7 +112,6 @@ def main(args):
     
     train(
         model=model,
-        tokenizer=tokenizer,
         optimizer=optimizer, 
         train_loader=train_loader, 
         val_loader=val_loader, 
@@ -137,7 +126,7 @@ def main(args):
         is_wandb=is_wandb
     )    
 
-def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
+def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader, val_loader, output_dir: str, start_epoch: int, max_epoch: int, gradient_accumulation_interval: int, eval_interval: int, save_interval: int, learning_rate: float, with_lr_scheduler: bool, is_wandb: bool):   
     scaler = torch.cuda.amp.GradScaler()
     losses = np.zeros(max_epoch)
 
@@ -173,7 +162,7 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
 
         dt = time.time() - t0
 
-        sample(tokenizer, model)
+        sample(model)
         mean_loss = utils.mean(_losses)
         losses[iter] = mean_loss
         logger.info(f"Epoch: {iter+1} | Loss: {mean_loss} | Time: {dt*1000:.2f}")
@@ -205,7 +194,7 @@ def train(model: torch.nn.Module, tokenizer: Tokenizer, optimizer: torch.optim.O
     return losses
 
 # Generate the sample.
-def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
+def sample(model: torch.nn.Module) -> None:
     decode = lambda x: tokenizer.decode(x)
     start_tokens = "[BOS] 세상을 바꾸는 것은 누구일까?"
     result = tokenizer.encode(start_tokens)
@@ -219,7 +208,33 @@ def sample(tokenizer: Tokenizer, model: torch.nn.Module) -> None:
         f.writelines(result)
         f.close()
 
+
+def create_dataloader(args, config):
+    g = torch.Generator()
+    g.manual_seed(12499489)
+
+    batch_size = args.batch_size
+    dataset_path = args.dataset_path
+    from_cache = args.from_cache
+    save_cache = args.save_cache
+    cache_directory = args.cache_directory
+    
+    dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, device=CONFIG.device, save_cache=save_cache)
+    total_size = len(dataset)
+    train_size = int(0.8*total_size)
+    val_size = total_size - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True,shuffle=False, generator=g)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False,  generator=g)
+    logger.info("Finishing Loading the Dataset.")
+    return train_loader, val_loader
+
+
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision("high")
+    utils.set_seed()
+    # torch.multiprocessing.set_start_method('spawn')
+
     parser = argparse.ArgumentParser(description='Train My Custom GPT 🚀!!!')
 
     parser.add_argument('--batch_size', type=int, default=CONFIG.batch_size)
