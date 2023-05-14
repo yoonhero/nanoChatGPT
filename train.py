@@ -206,7 +206,7 @@ def create_dataloader(args, config):
     
     dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, device=CONFIG.device, save_cache=save_cache)
     total_size = len(dataset)
-    train_size = int(0.8*total_size)
+    train_size = int(0.99*total_size)
     val_size = total_size - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)

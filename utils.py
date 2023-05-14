@@ -8,7 +8,6 @@ import numpy as np
 import random
 import gzip
 
-
 # Save the model.
 def save_model(epoch: int, model, optimizer, PATH: str) -> None:
     model_state_dict = {
@@ -75,13 +74,18 @@ mean = lambda li: sum(li)/len(li)
 def estimate_loss(model, train_loader, val_loader):
     out = {}
     model.eval()
-    for split in ["train", "val"]:
-        losses = []
-        d = train_loader if split=="train" else val_loader
-        for X, Y in d:
-            _, loss = model(X, Y)
-            losses.append(loss.item())
-        out[split] = mean(losses)
+    # for split in ["train", "val"]:
+        # losses = []
+        # d = train_loader if split=="train" else val_loader
+        # for X, Y in d:
+            # _, loss = model(X, Y)
+            # losses.append(loss.item())
+    losses = []
+    for X, Y in val_loader:
+        _, loss = model(X, Y)
+        losses.append(loss.item())
+
+    out["val"] = mean(losses)
 
     model.train()
     return out
