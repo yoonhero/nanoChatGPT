@@ -88,7 +88,7 @@ def main(args):
         )
         logger.info("Initiate the WANDB.")
 
-    train_loader, val_loader = create_dataloader(args, config)
+    train_loader = create_dataloader(args, config)
 
     if load:
         model, optimizer, _ = utils.load_model(output_dir, config, best=True)
@@ -104,7 +104,6 @@ def main(args):
         model=model,
         optimizer=optimizer, 
         train_loader=train_loader, 
-        val_loader=val_loader, 
         output_dir=output_dir, 
         max_epoch=max_epoch, 
         gradient_accumulation_interval=gradient_accumulation_interval, 
@@ -148,9 +147,9 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, train_loader
 
                 logger.info(f"ITER {iter_num}: train loss {loss.item():.4f}")
             
-            if iter_num % eval_interval == 0:
-                estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
-                logger.info(f"EPOCH {iter_num}: train loss {estimated_losses['train']:.4f}, val loss {estimated_losses['val']:.4f}")
+            # if iter_num % eval_interval == 0:
+            #     estimated_losses = utils.estimate_loss(model=model, train_loader=train_loader, val_loader=val_loader)
+            #     logger.info(f"ITER {iter_num}: val loss {estimated_losses['val']:.4f}")
 
             # Save the every save interval
             if iter_num % save_interval == 0:
@@ -207,14 +206,15 @@ def create_dataloader(args, config):
     cache_directory = args.cache_directory
     
     dataset = CoolDataset(dataset_path, tokenizer, from_cache=from_cache, cache_dir=cache_directory, block_size=config.block_size, device=CONFIG.device, save_cache=save_cache)
-    total_size = len(dataset)
-    train_size = int(0.98*total_size)
-    val_size = total_size - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False, num_workers=4, generator=g)
+    # total_size = len(dataset)
+    # train_size = int(0.98*total_size)
+    # val_size = total_size - train_size
+    # train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=g)
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, drop_last=True,shuffle=False, generator=g)
+    train_loader = DataLoader(dataset, batch_size=batch_size, drop_last=True, shuffle=False, num_workers=4, generator=g)
     logger.info("Finishing Loading the Dataset.")
-    return train_loader, val_loader
+    return train_loader
 
 
 if __name__ == "__main__":
